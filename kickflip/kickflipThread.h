@@ -114,7 +114,7 @@ namespace kickflip
 			{
 			case RUNNING:
 				while(SUSPENDED != m_eStatus) Suspend();
-				m_rpThreadObject->StopLoop();
+				m_rpThreadFunction->StopLoop();
 				Resume();
 				WaitForSingleObject(m_hThread, INFINITE);
 				m_eStatus = COMPLETE;
@@ -123,18 +123,19 @@ namespace kickflip
 
 			return false;
 		}
+		ThreadFunctionRPtr GetFunction() { return m_rpThreadFunction; }
 
 	protected:
 		Thread( ThreadFunctionRPtr rpThreadObject, unsigned int uiStackSize )
 			: m_hThread(NULL)
-			, m_rpThreadObject(rpThreadObject)
+			, m_rpThreadFunction(rpThreadObject)
 			, m_uiStackSize(uiStackSize)
 		{
 		}
 	private:
 		bool CreateThread_()
 		{
-			if(NULL == m_rpThreadObject) return false;
+			if(NULL == m_rpThreadFunction) return false;
 			m_hThread = (HANDLE)_beginthreadex(NULL, m_uiStackSize, callThreadObject, this, CREATE_SUSPENDED, NULL);
 
 			if (0 == m_hThread) return false;
@@ -161,7 +162,7 @@ namespace kickflip
 		{
 			Thread* pThis = reinterpret_cast<Thread*>(p);
 
-			ThreadFunction* pObject = pThis->m_rpThreadObject;
+			ThreadFunction* pObject = pThis->m_rpThreadFunction;
 			while(true)
 			{
 				pThis->m_uiReturn = pObject->Execute(pThis);
@@ -169,15 +170,15 @@ namespace kickflip
 				Sleep(pObject->GetSleepTime());
 			}
 
-			pThis->m_rpThreadObject->m_bComplete = true;
-			pThis->m_rpThreadObject = NULL;
+			pThis->m_rpThreadFunction->m_bComplete = true;
+			pThis->m_rpThreadFunction = NULL;
 			pThis->m_eStatus = COMPLETE;
 
 			return pThis->m_uiReturn;
 		}
 
 	protected:
-		ThreadFunctionRPtr m_rpThreadObject;
+		ThreadFunctionRPtr m_rpThreadFunction;
 		HANDLE m_hThread;
 		unsigned int m_uiStackSize;
 		volatile unsigned int m_uiReturn;

@@ -17,7 +17,9 @@ namespace kickflip
 	class InputDevice :public ReferenceObject
 	{
 	public:
-		InputDevice(void){}
+		InputDevice(void)
+			: m_pInputStabilizer(NULL)
+		{}
 
 		virtual ~InputDevice(void){}
 
@@ -53,11 +55,86 @@ namespace kickflip
 
 		};
 	private:
+		SmartPtr(InputStabilizer);
+		class InputStabilizer :public ThreadFunction
+		{
+		public:
+			InputStabilizer()
+				: ThreadFunction(true,0)
+				, m_uiLastUpdateTime(Time::GetRealTimeMilliSecond())
+				, m_uiUpdateInterval(1000/60)
+			{}
+			virtual ~InputStabilizer()
+			{}
+			void SetUpdateInterval(const unsigned int uiUpdateIntervalMillisecond)
+			{
+				m_uiUpdateInterval = uiUpdateIntervalMillisecond;
+			}
+			virtual unsigned int Execute(kickflip::Thread* pThread)
+			{
+				while(true)
+				{
+					int iIntervalMilliSec = m_uiUpdateInterval - ( Time::GetRealTimeMilliSecond() - m_uiLastUpdateTime);
+					if(0>iIntervalMilliSec)
+					{
+						// ‰ß‚¬‚½‚Ì‚Å‘¬U
+						Sleep(0);
+						break;
+					}else
+					if(2>=iIntervalMilliSec)
+					{
+						// Žc‚è2msˆÈ‰º‚Í‚à‚¤”²‚¯‚é
+						Sleep(iIntervalMilliSec);
+						break;
+					}else{
+						// ”¼•ª‚â‚Á‚Ä—lŽqŒ©
+						Sleep( iIntervalMilliSec/2 );
+					}
+				}
+				DebugOutput("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
+				m_uiLastUpdateTime = Time::GetRealTimeMilliSecond();
+
+				m_kLock.Enter();
+				for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
+				{
+					GamePad& kPad = m_kGamePad[idx];
+					XINPUT_STATE	InputState;
+					const bool		bIsLastConnect = kPad.m_bIsConnect;
+					kPad.m_bIsConnect = ( XInputGetState(idx,&InputState) == ERROR_SUCCESS ) ? true : false;
+
+					if( false == kPad.m_bIsConnect ) continue;
+
+					bool bIsInsert = ( !bIsLastConnect &&  kPad.m_bIsConnect ) ? true : false;
+
+					if( bIsInsert )
+					{
+						kPad.Reset();
+						XInputGetCapabilities( idx, XINPUT_FLAG_GAMEPAD, &kPad.m_kCaps );
+					}
+//					kPad.m_kInputState = InputState.Gamepad;
+					kPad.m_kInputStateLog.push_back(InputState.Gamepad);
+				}
+				m_kLock.Exit();
+
+				return 0;
+			}
+			InputDevice::GamePad& GetPad(unsigned int idx)
+			{
+				return m_kGamePad[idx];
+			}
+
+			Lock m_kLock;
+		private:
+			InputDevice::GamePad m_kGamePad[InputDevice::GamePad::MAX_NUM];
+			unsigned int m_uiLastUpdateTime;
+			unsigned int m_uiUpdateInterval;
+		};
 
 	private:
 		GamePad m_kGamePad[GamePad::MAX_NUM];
 		GamePad m_kGamePadEmpty;
 		ThreadRPtr m_rpThread;
+		InputStabilizer* m_pInputStabilizer;
 
 	public:
 		bool Initialize()
@@ -67,42 +144,29 @@ namespace kickflip
 			{
 				m_kGamePad[idx].Reset();
 			}
+
+			m_rpThread = Thread::Create( new InputStabilizer() );
+			if ( NULL == m_rpThread ) return false;
+
+			m_pInputStabilizer = static_cast<InputStabilizer*>( static_cast<ThreadFunction*>( m_rpThread->GetFunction() ) );
+			m_rpThread->Resume();
+
 			return true;
 		}
 		void Update()
 		{
+
+			m_pInputStabilizer->m_kLock.Enter();
 			for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
 			{
-				GamePad& kPad = m_kGamePad[idx];
-				XINPUT_STATE	InputState;
-				const bool		bIsLastConnect = kPad.m_bIsConnect;
-				kPad.m_bIsConnect = ( XInputGetState(idx,&InputState) == ERROR_SUCCESS ) ? true : false;
-
-				if( false == kPad.m_bIsConnect ) continue;
-
-				bool bIsInsert = ( !bIsLastConnect &&  kPad.m_bIsConnect ) ? true : false;
-
-				if( bIsInsert )
-				{
-					kPad.Reset();
-					XInputGetCapabilities( idx, XINPUT_FLAG_GAMEPAD, &kPad.m_kCaps );
-				}
-				kPad.m_kInputState = InputState.Gamepad;
-			}
-
-/*
-
-			m_rpGamePadWatcher->m_kLock.Enter();
-			for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
-			{
-				GamePad& kPadMapLog = m_rpGamePadWatcher->GetPad(idx);
+				GamePad& kPadMapLog = m_pInputStabilizer->GetPad(idx);
 				m_kGamePad[idx] = kPadMapLog;
 
 				kPadMapLog.m_kInputStateLog.clear();
 			}
-			m_rpGamePadWatcher->m_kLock.Exit();
+			m_pInputStabilizer->m_kLock.Exit();
 
-			for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
+			for( auto idx = 0; GamePad::MAX_NUM>idx; idx++ )
 			{
 				GamePad& kPad = m_kGamePad[idx];
 				if(true == kPad.m_kInputStateLog.empty())
@@ -113,7 +177,7 @@ namespace kickflip
 					m_kGamePad[idx].m_kInputState = m_kGamePad[idx].m_kInputStateLog.back();
 				}
 			}
-*/
+
 		}
 		const GamePad& GetGamePad(unsigned int idx) 
 		{

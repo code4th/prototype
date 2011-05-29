@@ -100,18 +100,14 @@ namespace kickflip
 	{
 		m_rpGraphicDevice = new GraphicDevice();
 		if(NULL == m_rpGraphicDevice) return false;
-		return m_rpGraphicDevice->Initialize(m_hWnd, uiWidth, uiHeight) );
+		return m_rpGraphicDevice->Initialize(m_hWnd, uiWidth, uiHeight);
 
 	}
 	bool Framework::InitializeInputSystem()
 	{
 		m_rpInputDevice = new InputDevice();
 		if( false == m_rpInputDevice->Initialize() ) return false;
-/*
-		m_rpGamePadWatcher = new GamePadWatcher();
-		m_rpThread = Thread::Create( m_rpGamePadWatcher );
-		m_rpThread->Resume();
-		*/
+		return true;
 	}
 
 	bool Framework::Initialize()
