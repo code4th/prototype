@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="kickflip">
+      <UniqueIdentifier>{e64a7c20-0ad6-45b0-ac0c-4db9032ac269}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\kickflip\kickflipFramework.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\kickflip\kickflipGraphicDevice.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\kickflip\kickflipGraphicShader.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\kickflip\kickflipGraphicShaderObject.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\kickflip\kickflipSmartPointer.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Prototype.cpp" />
+    <ClCompile Include="..\kickflip\kickflipEmbedded.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\kickflip\kickflipDebugFont.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\kickflip\kickflipInputDevice.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
+    <ClCompile Include="..\kickflip\kickflipThread.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\kickflip\kickflipFramework.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kickflip\kickflipGraphicDevice.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kickflip\kickflipGraphicShader.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kickflip\kickflipGraphicShaderObject.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kickflip\kickflipHashString.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kickflip\kickflipSmartPointer.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Prototype.h" />
+    <ClInclude Include="..\kickflip\kickflipEmbedded.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kickflip\kickflipDebugFont.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kickflip\kickflipInputDevice.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kickflip\kickflipThread.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
