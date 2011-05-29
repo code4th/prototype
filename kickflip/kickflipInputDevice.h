@@ -29,6 +29,14 @@ namespace kickflip
 			friend class InputDevice;
 		public:
 			enum { MAX_NUM = 4};
+
+			struct InputState{
+				XINPUT_GAMEPAD on;
+				XINPUT_GAMEPAD off;
+				XINPUT_GAMEPAD pressed;
+				XINPUT_GAMEPAD released;
+			};
+
 		public:
 			GamePad()
 				: m_bIsConnect(false)
@@ -36,20 +44,38 @@ namespace kickflip
 				Reset();
 			}
 			virtual ~GamePad(){}
-			typedef std::vector<XINPUT_GAMEPAD> InputStateLog;
+			void UpdateState()
+			{
+				const unsigned int max = m_kInputStateLog.size();
+				for(unsigned int i=0; max>i; i++)
+				{
+					InputState& kState = m_kInputStateLog[i];
+					kState.off.wButtons = ~kState.on.wButtons;
+				}
+
+				for(unsigned int i=1; max>i; i++)
+				{
+					InputState& kStatePre = m_kInputStateLog[i-1];
+					InputState& kState = m_kInputStateLog[i];
+
+					kState.pressed.wButtons = kStatePre.off.wButtons & kState.on.wButtons;
+					kState.released.wButtons = ~kState.pressed.wButtons;
+				}
+			}
+			typedef std::vector<InputState> InputStateLog;
 		private:
 			bool m_bIsConnect;
-			XINPUT_GAMEPAD m_kInputState;
 			XINPUT_CAPABILITIES m_kCaps;
+			InputState m_kInputState;
 			InputStateLog m_kInputStateLog;
 
 		public:
 			void Reset()
 			{
-				memset(&m_kInputState,0,sizeof(XINPUT_GAMEPAD));
+				memset(&m_kInputState,0,sizeof(InputState));
 				memset(&m_kCaps,0,sizeof(XINPUT_CAPABILITIES));
 			}
-			const XINPUT_GAMEPAD& GetState() const { return m_kInputState;}
+			const InputState& GetState() const { return m_kInputState;}
 			const InputStateLog& GetStateLog() const { return m_kInputStateLog;}
 			const bool IsConnect() const { return m_bIsConnect;}
 
@@ -91,6 +117,7 @@ namespace kickflip
 						Sleep( iIntervalMilliSec/2 );
 					}
 				}
+
 				DebugOutput("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
 				m_uiLastUpdateTime = Time::GetRealTimeMilliSecond();
 
@@ -98,9 +125,9 @@ namespace kickflip
 				for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
 				{
 					GamePad& kPad = m_kGamePad[idx];
-					XINPUT_STATE	InputState;
+					XINPUT_STATE	kInputState;
 					const bool		bIsLastConnect = kPad.m_bIsConnect;
-					kPad.m_bIsConnect = ( XInputGetState(idx,&InputState) == ERROR_SUCCESS ) ? true : false;
+					kPad.m_bIsConnect = ( XInputGetState(idx,&kInputState) == ERROR_SUCCESS ) ? true : false;
 
 					if( false == kPad.m_bIsConnect ) continue;
 
@@ -111,8 +138,9 @@ namespace kickflip
 						kPad.Reset();
 						XInputGetCapabilities( idx, XINPUT_FLAG_GAMEPAD, &kPad.m_kCaps );
 					}
-//					kPad.m_kInputState = InputState.Gamepad;
-					kPad.m_kInputStateLog.push_back(InputState.Gamepad);
+					GamePad::InputState kState;
+					kState.on = kInputState.Gamepad;
+					kPad.m_kInputStateLog.push_back(kState);
 				}
 				m_kLock.Exit();
 
@@ -169,6 +197,7 @@ namespace kickflip
 			for( auto idx = 0; GamePad::MAX_NUM>idx; idx++ )
 			{
 				GamePad& kPad = m_kGamePad[idx];
+				kPad.UpdateState();
 				if(true == kPad.m_kInputStateLog.empty())
 				{
 					// —š—ğ‚ª‚È‚¯‚ê‚Î©•ª©g‚ªÅV

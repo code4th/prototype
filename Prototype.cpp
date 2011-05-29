@@ -98,9 +98,9 @@ void Prototype::UpdateFrame()
 			std::string strButtons;
 			for(auto ite = kGamaPad.GetStateLog().begin(); kGamaPad.GetStateLog().end()!=ite; ite++)
 			{
-				if(0!=ite->wButtons) strButtons+="1"; else strButtons+="0";
+				if(0!=ite->pressed.wButtons) strButtons+="1"; else strButtons+="0";
 			}
-			DebugPrint(0,5+i,"pad(%d):ON  %s(%d) %d", i, strButtons.c_str(), kGamaPad.GetStateLog().size(), kGamaPad.GetState().wButtons);
+			DebugPrint(0,5+i,"pad(%d):ON  %s(%d) %d", i, strButtons.c_str(), kGamaPad.GetStateLog().size(), kGamaPad.GetState().pressed.wButtons);
 		}else{
 			DebugPrint(0,5+i,"pad(%d):OFF", i);
 		}
