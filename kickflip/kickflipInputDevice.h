@@ -10,6 +10,7 @@
 #include "kickflipSmartPointer.h"
 #include "kickflipThread.h"
 #include "kickflipEmbedded.h"
+#include "kickflipDebugFont.h"
 
 namespace kickflip
 {
@@ -29,14 +30,59 @@ namespace kickflip
 			friend class InputDevice;
 		public:
 			enum { MAX_NUM = 4};
+			enum {
+				L_UP			= 0x0001,	//	XINPUT_GAMEPAD_DPAD_UP   
+				L_DOWN			= 0x0002,	//	XINPUT_GAMEPAD_DPAD_DOWN 
+				L_LEFT			= 0x0004,	//	XINPUT_GAMEPAD_DPAD_LEFT 
+				L_RIGHT			= 0x0008,	//	XINPUT_GAMEPAD_DPAD_RIGHT
 
-			struct InputState{
-				XINPUT_GAMEPAD on;
-				XINPUT_GAMEPAD off;
-				XINPUT_GAMEPAD pressed;
-				XINPUT_GAMEPAD released;
+				START			= 0x0010,	//	XINPUT_GAMEPAD_START
+				BACK			= 0x0020,	//	XINPUT_GAMEPAD_BACK 
+
+				L_THUMB			= 0x0040,	//	XINPUT_GAMEPAD_LEFT_THUMB 
+				R_THUMB			= 0x0080,	//	XINPUT_GAMEPAD_RIGHT_THUMB
+
+				L1				= 0x0100,	//	XINPUT_GAMEPAD_LEFT_SHOULDER 
+				R1				= 0x0200,	//	XINPUT_GAMEPAD_RIGHT_SHOULDER
+
+				R_DOWN			= 0x1000,	//	XINPUT_GAMEPAD_A
+				R_RIGHT			= 0x2000,	//	XINPUT_GAMEPAD_B
+				R_LEFT			= 0x4000,	//	XINPUT_GAMEPAD_X
+				R_UP			= 0x8000,	//	XINPUT_GAMEPAD_Y
+
+				// アナログ拡張
+				L2				= 0x10000,
+				R2				= 0x20000,
+
+				// 別名
+				A				= R_DOWN,
+				B				= R_RIGHT,
+				X				= R_LEFT,
+				Y				= R_UP,
+			};
+			struct Buttons{
+				unsigned int uiButtons;
 			};
 
+			struct InputState{
+				Buttons on;
+				Buttons off;
+				Buttons pressed;
+				Buttons released;
+				BYTE l2;
+				BYTE r2;
+				SHORT lx;
+				SHORT ly;
+				SHORT rx;
+				SHORT ry;
+			};
+		public:
+			typedef std::vector<InputState> InputStateLog;
+		private:
+			bool m_bIsConnect;
+			XINPUT_CAPABILITIES m_kCaps;
+			InputState m_kInputState;
+			InputStateLog m_kInputStateLog;
 		public:
 			GamePad()
 				: m_bIsConnect(false)
@@ -44,37 +90,30 @@ namespace kickflip
 				Reset();
 			}
 			virtual ~GamePad(){}
+			void Reset()
+			{
+				memset(&m_kCaps,0,sizeof(XINPUT_CAPABILITIES));
+				memset(&m_kInputState,0,sizeof(InputState));
+				m_kInputStateLog.clear();
+			}
+
 			void UpdateState()
 			{
 				const unsigned int max = m_kInputStateLog.size();
+				// offはすでに設定してある
 				for(unsigned int i=0; max>i; i++)
 				{
+					InputState& kStatePre = m_kInputState;
+					if(0<i) kStatePre = m_kInputStateLog[i-1];
 					InputState& kState = m_kInputStateLog[i];
-					kState.off.wButtons = ~kState.on.wButtons;
-				}
-
-				for(unsigned int i=1; max>i; i++)
-				{
-					InputState& kStatePre = m_kInputStateLog[i-1];
-					InputState& kState = m_kInputStateLog[i];
-
-					kState.pressed.wButtons = kStatePre.off.wButtons & kState.on.wButtons;
-					kState.released.wButtons = ~kState.pressed.wButtons;
+					// 前回offで今回onのもの
+					kState.pressed.uiButtons = kStatePre.off.uiButtons & kState.on.uiButtons;
+					// 前回onで今回offのもの
+					kState.released.uiButtons = kStatePre.on.uiButtons & kState.off.uiButtons;
 				}
 			}
-			typedef std::vector<InputState> InputStateLog;
-		private:
-			bool m_bIsConnect;
-			XINPUT_CAPABILITIES m_kCaps;
-			InputState m_kInputState;
-			InputStateLog m_kInputStateLog;
 
 		public:
-			void Reset()
-			{
-				memset(&m_kInputState,0,sizeof(InputState));
-				memset(&m_kCaps,0,sizeof(XINPUT_CAPABILITIES));
-			}
 			const InputState& GetState() const { return m_kInputState;}
 			const InputStateLog& GetStateLog() const { return m_kInputStateLog;}
 			const bool IsConnect() const { return m_bIsConnect;}
@@ -96,6 +135,22 @@ namespace kickflip
 			{
 				m_uiUpdateInterval = uiUpdateIntervalMillisecond;
 			}
+			DWORD WINAPI DebugXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState)
+			{
+				if(0!=dwUserIndex) return !ERROR_SUCCESS;
+				static int i=0;
+				XINPUT_GAMEPAD kGamePad;
+				memset(&kGamePad,0,sizeof(XINPUT_GAMEPAD));
+				if(0!=i%3)
+				{
+					kGamePad.wButtons|= GamePad::L1;
+				}
+				i++;
+				pState->Gamepad = kGamePad;
+
+				return ERROR_SUCCESS;
+			}
+
 			virtual unsigned int Execute(kickflip::Thread* pThread)
 			{
 				while(true)
@@ -128,6 +183,7 @@ namespace kickflip
 					XINPUT_STATE	kInputState;
 					const bool		bIsLastConnect = kPad.m_bIsConnect;
 					kPad.m_bIsConnect = ( XInputGetState(idx,&kInputState) == ERROR_SUCCESS ) ? true : false;
+//					kPad.m_bIsConnect = ( DebugXInputGetState(idx,&kInputState) == ERROR_SUCCESS ) ? true : false;
 
 					if( false == kPad.m_bIsConnect ) continue;
 
@@ -138,9 +194,23 @@ namespace kickflip
 						kPad.Reset();
 						XInputGetCapabilities( idx, XINPUT_FLAG_GAMEPAD, &kPad.m_kCaps );
 					}
-					GamePad::InputState kState;
-					kState.on = kInputState.Gamepad;
-					kPad.m_kInputStateLog.push_back(kState);
+					GamePad::InputState kMyState;
+					kMyState.on.uiButtons = kInputState.Gamepad.wButtons;
+					kMyState.lx = kInputState.Gamepad.sThumbLX;
+					kMyState.ly = kInputState.Gamepad.sThumbLY;
+					kMyState.rx = kInputState.Gamepad.sThumbRX;
+					kMyState.ry = kInputState.Gamepad.sThumbRY;
+					kMyState.l2 = kInputState.Gamepad.bLeftTrigger;
+					kMyState.r2 = kInputState.Gamepad.bRightTrigger;
+					// 拡張
+					kMyState.on.uiButtons |= ( XINPUT_GAMEPAD_TRIGGER_THRESHOLD < kMyState.l2 ) ? GamePad::L2 : 0;
+					kMyState.on.uiButtons |= ( XINPUT_GAMEPAD_TRIGGER_THRESHOLD < kMyState.r2 ) ? GamePad::R2 : 0;
+
+					kMyState.off.uiButtons = ~kMyState.on.uiButtons;
+					kMyState.pressed.uiButtons = 0;
+					kMyState.released.uiButtons = 0;
+
+					kPad.m_kInputStateLog.push_back(kMyState);
 				}
 				m_kLock.Exit();
 
@@ -205,6 +275,9 @@ namespace kickflip
 					// 履歴の一番最近のものを取得
 					m_kGamePad[idx].m_kInputState = m_kGamePad[idx].m_kInputStateLog.back();
 				}
+				// 最新の状態をスタビライザーにフィードバック
+				m_pInputStabilizer->GetPad(idx).m_kInputState = m_kGamePad[idx].m_kInputState;
+
 			}
 
 		}
@@ -213,6 +286,66 @@ namespace kickflip
 			if(GamePad::MAX_NUM<=idx) return m_kGamePadEmpty;
 
 			return m_kGamePad[idx];
+		}
+		std::string getStringFromButtons(unsigned int  kButtons)
+		{
+			std::string res;
+			if(kButtons&GamePad::L_UP) res+="L_UP|";
+			if(kButtons&GamePad::L_DOWN) res+="L_DOWN|";
+			if(kButtons&GamePad::L_LEFT) res+="L_LEFT|";
+			if(kButtons&GamePad::L_RIGHT) res+="L_RIGHT|";
+			
+			if(kButtons&GamePad::START) res+="START|";
+			if(kButtons&GamePad::BACK) res+="BACK|";
+
+			if(kButtons&GamePad::L_THUMB) res+="L_THUMB|";
+			if(kButtons&GamePad::R_THUMB) res+="R_THUMB|";
+
+			if(kButtons&GamePad::L1) res+="L1|";
+			if(kButtons&GamePad::R1) res+="R1|";
+
+			if(kButtons&GamePad::R_UP) res+="R_UP|";
+			if(kButtons&GamePad::R_DOWN) res+="R_DOWN|";
+			if(kButtons&GamePad::R_LEFT) res+="R_LEFT|";
+			if(kButtons&GamePad::R_RIGHT) res+="R_RIGHT|";
+
+			if(kButtons&GamePad::L2) res+="L2|";
+			if(kButtons&GamePad::R2) res+="R2|";
+
+			if(res.empty())
+			{
+				res="NONE";
+			}
+			return res;
+		}
+		void DebugPrintGamePad(unsigned int x, unsigned int y)
+		{
+			unsigned int iLine = y;
+			for(int i=0;i<InputDevice::GamePad::MAX_NUM; i++)
+			{
+				const GamePad& kGamePad = m_kGamePad[i];
+				if(true == kGamePad.IsConnect())
+				{
+
+					std::string strButton;
+					unsigned int idx =0;
+					char buf[2048];
+					sprintf_s(buf," cur:[{%s}/{%s}/{%s}]",getStringFromButtons(kGamePad.GetState().on.uiButtons).c_str(),getStringFromButtons(kGamePad.GetState().pressed.uiButtons).c_str(),getStringFromButtons(kGamePad.GetState().released.uiButtons).c_str());
+					strButton+=buf;
+
+					for(auto ite = kGamePad.GetStateLog().begin(); kGamePad.GetStateLog().end()!=ite; ite++)
+					{
+						sprintf_s(buf," %d:[{%s}/{%s}/{%s}]",idx,getStringFromButtons(ite->on.uiButtons).c_str(),getStringFromButtons(ite->pressed.uiButtons).c_str(),getStringFromButtons(ite->released.uiButtons).c_str());
+						strButton+=buf;
+						idx++;
+					}
+
+					DebugPrint(x,y++,"pad(%d):%d [%s]", i, kGamePad.GetStateLog().size(),strButton.c_str());
+					DebugOutput("pad(%d):%d [%s]\n", i, kGamePad.GetStateLog().size(),strButton.c_str());
+				}else{
+					DebugPrint(x,y++,"pad(%d):OFF", i);
+				}
+			}
 		}
 
 	};

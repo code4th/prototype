@@ -49,6 +49,7 @@ namespace kickflip
 		LPDIRECT3DDEVICE9 GetGraphicDevice() { return m_rpGraphicDevice->GetDevice(); }
 		GraphicShader& GetGraphicShader() { return m_rpGraphicDevice->GetShader(); }
 		const InputDevice::GamePad& GetGamePad(unsigned int idx) { return m_rpInputDevice->GetGamePad(idx); }
+		const InputDeviceRPtr& GetInputDevice() { return m_rpInputDevice; }
 
 	private:
 	private:

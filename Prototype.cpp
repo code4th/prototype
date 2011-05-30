@@ -89,22 +89,7 @@ void Prototype::UpdateFrame()
 
 	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond());
 
-	for(int i=0;i<InputDevice::GamePad::MAX_NUM; i++)
-	{
-		bool bIsConnect = GetGamePad(i).IsConnect();
-		if(true == bIsConnect)
-		{
-			const InputDevice::GamePad& kGamaPad = GetGamePad(i);
-			std::string strButtons;
-			for(auto ite = kGamaPad.GetStateLog().begin(); kGamaPad.GetStateLog().end()!=ite; ite++)
-			{
-				if(0!=ite->pressed.wButtons) strButtons+="1"; else strButtons+="0";
-			}
-			DebugPrint(0,5+i,"pad(%d):ON  %s(%d) %d", i, strButtons.c_str(), kGamaPad.GetStateLog().size(), kGamaPad.GetState().pressed.wButtons);
-		}else{
-			DebugPrint(0,5+i,"pad(%d):OFF", i);
-		}
-	}
+	GetInputDevice()->DebugPrintGamePad(0,5);
 
 	// エフェクト内のワールドビュー射影変換行列を設定
 	D3DXMATRIX mat;

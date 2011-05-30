@@ -157,7 +157,7 @@ namespace kickflip
 
 	void Framework::Update()
 	{
-		Sleep(500);
+		Sleep(33);
 		Time::Update();
 		m_rpInputDevice->Update();
 
