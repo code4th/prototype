@@ -9,10 +9,8 @@ Prototype theApp;
 using namespace kickflip;
 void Prototype::ExecOnceBeforeUpdate()
 {
-	m_rpThreadList.push_back(Thread::Create(new Test("Thread1",10,10)));
-	m_rpThreadList.push_back(Thread::Create(new Test("Thread2",10,11)));
-	m_rpThreadList.push_back(Thread::Create(new Test("Thread3",10,12)));
-	m_rpThreadList.push_back(Thread::Create(new Test("Thread4",10,13)));
+	for(auto i=0;i<10;i++)
+		m_rpThreadList.push_back(Thread::Create(new Test("Thread1",10,10)));
 
 	for(auto ite = m_rpThreadList.begin(); m_rpThreadList.end() != ite; ite++)
 	{
@@ -65,7 +63,7 @@ void Prototype::ExecOnceBeforeUpdate()
 		if( pErr != NULL )
 		{	// コンパイルエラー出力
 			const char *err = (char*)pErr->GetBufferPointer();
-			DebugOutput("shaderERR:%s\n", err );
+			DebugTrace("shaderERR:%s\n", err );
 
 			pErr->Release();
 		}
@@ -76,7 +74,51 @@ void Prototype::ExecOnceBeforeUpdate()
 	D3DXMatrixPerspectiveFovLH( &Proj, D3DXToRadian(45), 640.0f/480.0f, 1.0f, 10000.0f);
 
 
+	class Idol :public Action::Object
+	{
+	public:
+		Idol(char* pName)
+			: Action::Object(pName)
+			, m_fEnterTime(0.f)
+		{}
+		void Enter()
+		{
+			m_fEnterTime = (float)Time::GetRealTimeSecond();
+		}
+		bool Update()
+		{
+			DebugPrint(10,10,"%s:%f",m_kName.c_str(),Time::GetRealTimeSecond()-m_fEnterTime);
+			return true;
+		}
+		float m_fEnterTime;
+	};
+	class Punch :public Action::Object
+	{
+	public:
+		Punch(char* pName)
+			: Action::Object(pName)
+			, m_fEnterTime(0.f)
+		{}
+		void Enter()
+		{
+			m_fEnterTime = (float)Time::GetRealTimeSecond();
+		}
+		bool Update()
+		{
+			float fTime = (float)(Time::GetRealTimeSecond()-m_fEnterTime);
+			DebugPrint(10,10,"%s:%f",m_kName.c_str(),fTime);
+			if(1.0f<=fTime) return false;
 
+			return true;
+		}
+		float m_fEnterTime;
+	};
+
+	m_rpAction = new Action();
+
+	m_rpAction->Regist( 0, new Idol("Idol"));
+	m_rpAction->Regist( 1, new Punch("Punch"));
+	m_rpAction->ChangeAction(0);
 }
 
 void Prototype::UpdateFrame()
@@ -88,6 +130,8 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,4,"fps:%f(ave:%f)\n",Time::GetFPS(),Time::GetFPSAve());
 
 	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond());
+
+	m_rpAction->Update();
 
 	GetInputDevice()->DebugPrintGamePad(0,5);
 

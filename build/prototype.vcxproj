@@ -75,6 +75,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\kickflip\kickflipAction.cpp" />
     <ClCompile Include="..\kickflip\kickflipDebugFont.cpp" />
     <ClCompile Include="..\kickflip\kickflipEmbedded.cpp" />
     <ClCompile Include="..\kickflip\kickflipFramework.cpp" />
@@ -88,6 +89,7 @@
     <ClCompile Include="..\Prototype.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\kickflip\kickflipAction.h" />
     <ClInclude Include="..\kickflip\kickflipDebugFont.h" />
     <ClInclude Include="..\kickflip\kickflipEmbedded.h" />
     <ClInclude Include="..\kickflip\kickflipFramework.h" />

@@ -52,14 +52,27 @@ namespace kickflip
 	public:
 		enum Status
 		{
+			UNKNOWN     = -1,
 			RUNNING     = 0,
 			SUSPENDED,
 			COMPLETE
 		};
-	public:
-		static ThreadRPtr Create( ThreadFunctionRPtr rpThreadObject, unsigned int uiStackSize = 0 )
+		enum Priority
 		{
-			Thread* pThread = new Thread(rpThreadObject, uiStackSize);
+			IDLE = 0,               // Base priority level
+			LOWEST,                 // 2 points below normal
+			BELOW_NORMAL,           // 1 point below normal
+			NORMAL,
+			ABOVE_NORMAL,           // 1 point above normal
+			HIGHEST,                // 2 points above normal
+			TIME_CRITICAL,          // Absolute highest OS priority available
+			NUM_PRIORITIES
+		};
+
+	public:
+		static ThreadRPtr Create( ThreadFunctionRPtr rpThreadFunction, Priority ePriority = NORMAL, unsigned int uiStackSize = 0 )
+		{
+			Thread* pThread = new Thread(rpThreadFunction, uiStackSize);
 
 			if (NULL != pThread)
 			{
@@ -67,10 +80,22 @@ namespace kickflip
 				{
 					delete pThread;
 					pThread = 0;
+				}else{
+					pThread->SetPriority(ePriority);
 				}
 			}
 			return pThread;
 		}
+	protected:
+		Thread( ThreadFunctionRPtr rpThreadFunction, unsigned int uiStackSize )
+			: m_hThread(NULL)
+			, m_rpThreadFunction(rpThreadFunction)
+			, m_ePriority(NORMAL)
+			, m_uiStackSize(uiStackSize)
+			, m_uiReturn(0)
+			, m_eStatus(UNKNOWN)
+		{}
+	public:
 		~Thread()
 		{
 			WaitForComplete();
@@ -78,12 +103,46 @@ namespace kickflip
 			if (m_hThread) CloseHandle(m_hThread);
 			m_hThread = 0;
 		}
-		/*
-		bool SetPriority(Thread::Priority ePriority)
+		bool SetPriority(Priority ePriority)
 		{
-		return SystemSetPriority(ePriority);
-		}
-		*/
+			if (m_ePriority != ePriority)
+			{
+				int iPriority;
+
+				switch (ePriority)
+				{
+				case ABOVE_NORMAL:
+					iPriority = THREAD_PRIORITY_ABOVE_NORMAL;
+					break;
+				case BELOW_NORMAL:
+					iPriority = THREAD_PRIORITY_BELOW_NORMAL;
+					break;
+				case HIGHEST:
+					iPriority = THREAD_PRIORITY_HIGHEST;
+					break;
+				case IDLE:
+					iPriority = THREAD_PRIORITY_IDLE;
+					break;
+				case LOWEST:
+					iPriority = THREAD_PRIORITY_LOWEST;
+					break;
+				case NORMAL:
+					iPriority = THREAD_PRIORITY_NORMAL;
+					break;
+				case TIME_CRITICAL:
+					iPriority = THREAD_PRIORITY_TIME_CRITICAL;
+					break;
+				default:
+					return false;
+				}
+				if (!SetThreadPriority(m_hThread, iPriority))
+					return false;
+
+				m_ePriority = ePriority;
+			}
+
+			return true;
+		}		
 		int Suspend()
 		{
 			int iRet = SuspendThread(m_hThread);
@@ -125,13 +184,6 @@ namespace kickflip
 		}
 		ThreadFunctionRPtr GetFunction() { return m_rpThreadFunction; }
 
-	protected:
-		Thread( ThreadFunctionRPtr rpThreadObject, unsigned int uiStackSize )
-			: m_hThread(NULL)
-			, m_rpThreadFunction(rpThreadObject)
-			, m_uiStackSize(uiStackSize)
-		{
-		}
 	private:
 		bool CreateThread_()
 		{
@@ -178,9 +230,11 @@ namespace kickflip
 		}
 
 	protected:
-		ThreadFunctionRPtr m_rpThreadFunction;
 		HANDLE m_hThread;
+		ThreadFunctionRPtr m_rpThreadFunction;
+		Priority m_ePriority;
 		unsigned int m_uiStackSize;
+
 		volatile unsigned int m_uiReturn;
 		volatile Status m_eStatus;
 	};

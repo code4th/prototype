@@ -141,9 +141,19 @@ namespace kickflip
 				static int i=0;
 				XINPUT_GAMEPAD kGamePad;
 				memset(&kGamePad,0,sizeof(XINPUT_GAMEPAD));
-				if(0!=i%3)
+				switch(i%4)
 				{
-					kGamePad.wButtons|= GamePad::L1;
+				case 0:
+					kGamePad.wButtons|= GamePad::A;
+					break;
+				case 1:
+					kGamePad.wButtons|= GamePad::A|GamePad::B;
+					break;
+				case 2:
+					kGamePad.wButtons|= GamePad::B;
+					break;
+				case 3:
+					break;
 				}
 				i++;
 				pState->Gamepad = kGamePad;
@@ -153,13 +163,13 @@ namespace kickflip
 
 			virtual unsigned int Execute(kickflip::Thread* pThread)
 			{
+
 				while(true)
 				{
 					int iIntervalMilliSec = m_uiUpdateInterval - ( Time::GetRealTimeMilliSecond() - m_uiLastUpdateTime);
 					if(0>iIntervalMilliSec)
 					{
 						// ‰ß‚¬‚½‚Ì‚Å‘¬U
-						Sleep(0);
 						break;
 					}else
 					if(2>=iIntervalMilliSec)
@@ -173,10 +183,9 @@ namespace kickflip
 					}
 				}
 
-				DebugOutput("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
+				DebugTrace("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
 				m_uiLastUpdateTime = Time::GetRealTimeMilliSecond();
 
-				m_kLock.Enter();
 				for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
 				{
 					GamePad& kPad = m_kGamePad[idx];
@@ -209,10 +218,12 @@ namespace kickflip
 					kMyState.off.uiButtons = ~kMyState.on.uiButtons;
 					kMyState.pressed.uiButtons = 0;
 					kMyState.released.uiButtons = 0;
-
+					m_kLock.Enter();
 					kPad.m_kInputStateLog.push_back(kMyState);
+					m_kLock.Exit();
 				}
-				m_kLock.Exit();
+				Sleep(0);
+				DebugTrace("exec:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
 
 				return 0;
 			}
@@ -243,7 +254,7 @@ namespace kickflip
 				m_kGamePad[idx].Reset();
 			}
 
-			m_rpThread = Thread::Create( new InputStabilizer() );
+			m_rpThread = Thread::Create( new InputStabilizer(), Thread::TIME_CRITICAL );
 			if ( NULL == m_rpThread ) return false;
 
 			m_pInputStabilizer = static_cast<InputStabilizer*>( static_cast<ThreadFunction*>( m_rpThread->GetFunction() ) );
@@ -304,10 +315,10 @@ namespace kickflip
 			if(kButtons&GamePad::L1) res+="L1|";
 			if(kButtons&GamePad::R1) res+="R1|";
 
-			if(kButtons&GamePad::R_UP) res+="R_UP|";
-			if(kButtons&GamePad::R_DOWN) res+="R_DOWN|";
-			if(kButtons&GamePad::R_LEFT) res+="R_LEFT|";
-			if(kButtons&GamePad::R_RIGHT) res+="R_RIGHT|";
+			if(kButtons&GamePad::A) res+="A|";
+			if(kButtons&GamePad::B) res+="B|";
+			if(kButtons&GamePad::X) res+="X|";
+			if(kButtons&GamePad::Y) res+="Y|";
 
 			if(kButtons&GamePad::L2) res+="L2|";
 			if(kButtons&GamePad::R2) res+="R2|";
@@ -315,6 +326,8 @@ namespace kickflip
 			if(res.empty())
 			{
 				res="NONE";
+			}else{
+				res.erase(res.length()-1);
 			}
 			return res;
 		}
@@ -341,7 +354,7 @@ namespace kickflip
 					}
 
 					DebugPrint(x,y++,"pad(%d):%d [%s]", i, kGamePad.GetStateLog().size(),strButton.c_str());
-					DebugOutput("pad(%d):%d [%s]\n", i, kGamePad.GetStateLog().size(),strButton.c_str());
+					DebugTrace("pad(%d):%d [%s]\n", i, kGamePad.GetStateLog().size(),strButton.c_str());
 				}else{
 					DebugPrint(x,y++,"pad(%d):OFF", i);
 				}

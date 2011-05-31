@@ -12,7 +12,7 @@
 
 namespace kickflip
 {
-#define DebugOutput( str, ... ) \
+#define DebugTrace( str, ... ) \
 	{ \
 		TCHAR c[2048]; \
 		_stprintf_s( c, str, __VA_ARGS__ ); \

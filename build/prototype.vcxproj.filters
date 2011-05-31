@@ -37,6 +37,9 @@
     <ClCompile Include="..\kickflip\kickflipInputCommand.cpp">
       <Filter>kickflip</Filter>
     </ClCompile>
+    <ClCompile Include="..\kickflip\kickflipAction.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\kickflip\kickflipFramework.h">
@@ -71,6 +74,9 @@
       <Filter>kickflip</Filter>
     </ClInclude>
     <ClInclude Include="..\kickflip\kickflipInputCommand.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kickflip\kickflipAction.h">
       <Filter>kickflip</Filter>
     </ClInclude>
   </ItemGroup>

@@ -3,6 +3,7 @@
 #include "kickflip/kickflipframework.h"
 #include "kickflip/kickflipSmartPointer.h"
 #include "kickflip/kickflipThread.h"
+#include "kickflip/kickflipAction.h"
 
 #include <vector>
 
@@ -31,7 +32,7 @@ public:
 	{
 	public:
 		Test(char* name_, int x_, int y_)
-			: ThreadFunction(true,0)
+			: ThreadFunction(true,1)
 			, name(name_)
 			, x(x_)
 			, y(y_)
@@ -41,7 +42,7 @@ public:
 		}
 		virtual unsigned int Execute(kickflip::Thread* pThread)
 		{
-			//			DebugOutput("%s",name.c_str());
+			//			DebugTrace("%s",name.c_str());
 			return 0;
 		}
 		std::string name;
@@ -53,7 +54,7 @@ public:
 	std::vector<kickflip::ThreadRPtr> m_rpThreadList;
 
 	kickflip::ThreadRPtr m_rpThread;
-
+	kickflip::ActionRPtr m_rpAction;
 
 };
 
