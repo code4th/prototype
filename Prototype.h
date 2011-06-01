@@ -54,7 +54,7 @@ public:
 	std::vector<kickflip::ThreadRPtr> m_rpThreadList;
 
 	kickflip::ThreadRPtr m_rpThread;
-	kickflip::ActionRPtr m_rpAction;
+	kickflip::ActionControllerRPtr m_rpActionController;
 
 };
 

@@ -74,51 +74,43 @@ void Prototype::ExecOnceBeforeUpdate()
 	D3DXMatrixPerspectiveFovLH( &Proj, D3DXToRadian(45), 640.0f/480.0f, 1.0f, 10000.0f);
 
 
-	class Idol :public Action::Object
+	class Idol :public Action
 	{
 	public:
 		Idol(char* pName)
-			: Action::Object(pName)
-			, m_fEnterTime(0.f)
-		{}
-		void Enter()
+			: Action()
 		{
-			m_fEnterTime = (float)Time::GetRealTimeSecond();
+			m_kName = pName;
 		}
 		bool Update()
 		{
-			DebugPrint(10,10,"%s:%f",m_kName.c_str(),Time::GetRealTimeSecond()-m_fEnterTime);
-			return true;
+			return Action::Update();
 		}
-		float m_fEnterTime;
 	};
-	class Punch :public Action::Object
+	class Punch :public Action
 	{
 	public:
 		Punch(char* pName)
-			: Action::Object(pName)
-			, m_fEnterTime(0.f)
-		{}
-		void Enter()
+			: Action()
 		{
-			m_fEnterTime = (float)Time::GetRealTimeSecond();
+			m_kName = pName;
 		}
 		bool Update()
 		{
+			Action::Update();
 			float fTime = (float)(Time::GetRealTimeSecond()-m_fEnterTime);
-			DebugPrint(10,10,"%s:%f",m_kName.c_str(),fTime);
 			if(1.0f<=fTime) return false;
 
 			return true;
 		}
-		float m_fEnterTime;
 	};
 
-	m_rpAction = new Action();
+	m_rpActionController = new ActionController();
 
-	m_rpAction->Regist( 0, new Idol("Idol"));
-	m_rpAction->Regist( 1, new Punch("Punch"));
-	m_rpAction->ChangeAction(0);
+	m_rpActionController->Regist( 0, new Idol("Idol"));
+	m_rpActionController->Regist( 1, new Punch("Punch"));
+
+
 }
 
 void Prototype::UpdateFrame()
@@ -131,7 +123,12 @@ void Prototype::UpdateFrame()
 
 	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond());
 
-	m_rpAction->Update();
+	if(InputDevice::GamePad::A & GetGamePad(0).GetState().on.uiButtons)
+	{
+		m_rpActionController->ChangeAction(1);
+	}
+
+	m_rpActionController->Update();
 
 	GetInputDevice()->DebugPrintGamePad(0,5);
 
