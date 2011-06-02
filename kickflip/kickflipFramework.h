@@ -15,6 +15,7 @@ kickflipFramework アプリケーション初期化のラッパ
 #include "kickFlipGraphicDevice.h"
 #include "kickFlipInputDevice.h"
 #include "kickFlipThread.h"
+#include "kickFlipFrameRate.h"
 
 namespace kickflip
 {
@@ -59,6 +60,7 @@ namespace kickflip
 
 		GraphicDeviceRPtr	m_rpGraphicDevice;
 		InputDeviceRPtr		m_rpInputDevice;
+		FrameRateRPtr		m_rpFrameRate;
 
 
 	protected:

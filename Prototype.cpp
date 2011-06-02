@@ -9,6 +9,7 @@ Prototype theApp;
 using namespace kickflip;
 void Prototype::ExecOnceBeforeUpdate()
 {
+/*
 	for(auto i=0;i<10;i++)
 		m_rpThreadList.push_back(Thread::Create(new Test("Thread1",10,10)));
 
@@ -16,7 +17,7 @@ void Prototype::ExecOnceBeforeUpdate()
 	{
 		(*ite)->Resume();
 	}
-
+	*/
 	hash32 hash = HashString("teset");
 
 	hash32 t1 = HashString("a");
@@ -77,10 +78,9 @@ void Prototype::ExecOnceBeforeUpdate()
 	class Idol :public Action
 	{
 	public:
-		Idol(char* pName)
-			: Action()
+		Idol(hash32 kHash)
+			: Action(kHash)
 		{
-			m_kName = pName;
 		}
 		bool Update()
 		{
@@ -90,15 +90,32 @@ void Prototype::ExecOnceBeforeUpdate()
 	class Punch :public Action
 	{
 	public:
-		Punch(char* pName)
-			: Action()
+		Punch(hash32 kHash)
+			: Action(kHash)
 		{
-			m_kName = pName;
 		}
 		bool Update()
 		{
 			Action::Update();
-			float fTime = (float)(Time::GetRealTimeSecond()-m_fEnterTime);
+			DebugPrint(10,10,"Punch");
+			float fTime = (float)(Time::GetFrameTimeSecond()-m_fEnterTime);
+			if(0.05f<=fTime) return false;
+
+			return true;
+		}
+	};
+	class Kick :public Action
+	{
+	public:
+		Kick(hash32 kHash)
+			: Action(kHash)
+		{
+		}
+		bool Update()
+		{
+			Action::Update();
+			DebugPrint(10,10,"Kick");
+			float fTime = (float)(Time::GetFrameTimeSecond()-m_fEnterTime);
 			if(1.0f<=fTime) return false;
 
 			return true;
@@ -107,8 +124,11 @@ void Prototype::ExecOnceBeforeUpdate()
 
 	m_rpActionController = new ActionController();
 
-	m_rpActionController->Regist( 0, new Idol("Idol"));
-	m_rpActionController->Regist( 1, new Punch("Punch"));
+	m_rpActionController->Regist( new Idol(_H("Idol")) );
+	m_rpActionController->Regist( new Punch(_H("Punch")) );
+	m_rpActionController->Regist( new Kick(_H("Kick")) );
+	
+	m_rpActionController->ChangeAction(_H("Punch"));
 
 
 }
@@ -122,12 +142,26 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,4,"fps:%f(ave:%f)\n",Time::GetFPS(),Time::GetFPSAve());
 
 	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond());
-
-	if(InputDevice::GamePad::A & GetGamePad(0).GetState().on.uiButtons)
+	static int iSleep = 10;
+	DebugPrint(0,11,"sleep:%d",iSleep);
+	if(true == GetGamePad(0).IsPressed(InputDevice::GamePad::A))
 	{
-		m_rpActionController->ChangeAction(1);
+		m_rpActionController->ChangeAction(_H("Punch"));
 	}
-
+	if(true == GetGamePad(0).IsPressed(InputDevice::GamePad::B))
+	{
+		m_rpActionController->ChangeAction(_H("Kick"));
+	}
+	if(true == GetGamePad(0).IsOn(InputDevice::GamePad::L1))
+	{
+		--iSleep;
+	}
+	if(true == GetGamePad(0).IsOn(InputDevice::GamePad::R1))
+	{
+		++iSleep;
+	}
+	if(0>iSleep)iSleep=0;
+	Sleep(iSleep);
 	m_rpActionController->Update();
 
 	GetInputDevice()->DebugPrintGamePad(0,5);

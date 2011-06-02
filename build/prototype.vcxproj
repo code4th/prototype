@@ -78,6 +78,7 @@
     <ClCompile Include="..\kickflip\kickflipAction.cpp" />
     <ClCompile Include="..\kickflip\kickflipDebugFont.cpp" />
     <ClCompile Include="..\kickflip\kickflipEmbedded.cpp" />
+    <ClCompile Include="..\kickflip\kickflipFrameRate.cpp" />
     <ClCompile Include="..\kickflip\kickflipFramework.cpp" />
     <ClCompile Include="..\kickflip\kickflipGraphicDevice.cpp" />
     <ClCompile Include="..\kickflip\kickflipGraphicShader.cpp" />
@@ -92,6 +93,7 @@
     <ClInclude Include="..\kickflip\kickflipAction.h" />
     <ClInclude Include="..\kickflip\kickflipDebugFont.h" />
     <ClInclude Include="..\kickflip\kickflipEmbedded.h" />
+    <ClInclude Include="..\kickflip\kickflipFrameRate.h" />
     <ClInclude Include="..\kickflip\kickflipFramework.h" />
     <ClInclude Include="..\kickflip\kickflipGraphicDevice.h" />
     <ClInclude Include="..\kickflip\kickflipGraphicShader.h" />

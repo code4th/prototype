@@ -60,7 +60,7 @@ namespace kickflip
 			ActionMap& kActionMap = m_kActionMap;
 			for(auto ite=kInputStateLog.begin(); kInputStateLog.end()!=ite;ite++)
 			{
-				auto iteFind = kActionMap.find(ite->on.uiButtons);
+				auto iteFind = kActionMap.find(ite->on);
 			}
 		}
 

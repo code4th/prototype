@@ -8,6 +8,7 @@
 #include "kickflipSmartPointer.h"
 #include "kickflipInputDevice.h"
 #include "kickflipEmbedded.h"
+#include "kickflipHashString.h"
 #include "kickflipDebugFont.h"
 
 #include <vector>
@@ -16,17 +17,24 @@
 
 namespace kickflip
 {
+
 	SmartPtr(Action);
 	class Action : public ReferenceObject
 	{
 	public:
+		Action(hash32 kHash)
+			: m_fEnterTime(0.f)
+			, m_kHash(kHash)
+		{}
+		virtual ~Action() {}
+		virtual const hash32 GetHash() { return m_kHash;};
+
 		virtual void Enter()
 		{
 			m_fEnterTime = (float)Time::GetRealTimeSecond();
 		}
 		virtual bool Update()
 		{
-			DebugPrint(10,10,"%s:%f",m_kName.c_str(),Time::GetRealTimeSecond()-m_fEnterTime);
 			return true;
 		}
 		virtual void Exit()
@@ -34,7 +42,7 @@ namespace kickflip
 		}
 	protected:
 		float m_fEnterTime;
-		std::string m_kName;
+		hash32 m_kHash;
 
 	};
 
@@ -42,7 +50,7 @@ namespace kickflip
 	class ActionController :public ReferenceObject
 	{
 	public:
-		typedef std::map<int, ActionRPtr> ActionMap;
+		typedef std::map<hash32, ActionRPtr> ActionMap;
 		typedef std::vector<ActionRPtr> ActionList;
 	public:
 		ActionController(void)
@@ -66,9 +74,15 @@ namespace kickflip
 			}
 
 		}
+/*
 		void Regist(int index, const ActionRPtr& rpAction)
 		{
 			m_kActionMap[index] = rpAction;
+		}
+*/
+		void Regist(const ActionRPtr& rpAction)
+		{
+			m_kActionMap[rpAction->GetHash()] = rpAction;
 		}
 		virtual const ActionRPtr& GetDefaultAction()
 		{
@@ -79,7 +93,7 @@ namespace kickflip
 			m_rpDefaultAction = rpAction;
 		}
 
-		bool ChangeAction(int index)
+		bool ChangeAction(hash32 index)
 		{
 			auto ite = m_kActionMap.find(index);
 			if(m_kActionMap.end() == ite) return false;

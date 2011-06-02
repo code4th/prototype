@@ -96,6 +96,7 @@ namespace kickflip
 	{
 		return (hash >> 8) ^ crctab[(unsigned char)((hash & 0xff) ^ str[0])];
 	}
+	#define _H(x) HashString(x) 
 
 #if _DEBUG
 	// デバッグ時

@@ -60,9 +60,7 @@ namespace kickflip
 				X				= R_LEFT,
 				Y				= R_UP,
 			};
-			struct Buttons{
-				unsigned int uiButtons;
-			};
+			typedef unsigned int Buttons;
 
 			struct InputState{
 				Buttons on;
@@ -107,9 +105,9 @@ namespace kickflip
 					if(0<i) kStatePre = m_kInputStateLog[i-1];
 					InputState& kState = m_kInputStateLog[i];
 					// 前回offで今回onのもの
-					kState.pressed.uiButtons = kStatePre.off.uiButtons & kState.on.uiButtons;
+					kState.pressed = kStatePre.off & kState.on;
 					// 前回onで今回offのもの
-					kState.released.uiButtons = kStatePre.on.uiButtons & kState.off.uiButtons;
+					kState.released = kStatePre.on & kState.off;
 				}
 			}
 
@@ -117,6 +115,8 @@ namespace kickflip
 			const InputState& GetState() const { return m_kInputState;}
 			const InputStateLog& GetStateLog() const { return m_kInputStateLog;}
 			const bool IsConnect() const { return m_bIsConnect;}
+			const bool IsOn(const Buttons kButton) const { return 0!=(m_kInputState.on&kButton);}
+			const bool IsPressed(const Buttons kButton) const { return 0!=(m_kInputState.pressed&kButton);}
 
 		};
 	private:
@@ -167,7 +167,7 @@ namespace kickflip
 				while(true)
 				{
 					int iIntervalMilliSec = m_uiUpdateInterval - ( Time::GetRealTimeMilliSecond() - m_uiLastUpdateTime);
-					if(0>iIntervalMilliSec)
+					if(0>=iIntervalMilliSec)
 					{
 						// 過ぎたので速攻
 						break;
@@ -183,7 +183,7 @@ namespace kickflip
 					}
 				}
 
-				DebugTrace("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
+//				DebugTrace("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
 				m_uiLastUpdateTime = Time::GetRealTimeMilliSecond();
 
 				for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
@@ -204,7 +204,7 @@ namespace kickflip
 						XInputGetCapabilities( idx, XINPUT_FLAG_GAMEPAD, &kPad.m_kCaps );
 					}
 					GamePad::InputState kMyState;
-					kMyState.on.uiButtons = kInputState.Gamepad.wButtons;
+					kMyState.on = kInputState.Gamepad.wButtons;
 					kMyState.lx = kInputState.Gamepad.sThumbLX;
 					kMyState.ly = kInputState.Gamepad.sThumbLY;
 					kMyState.rx = kInputState.Gamepad.sThumbRX;
@@ -212,18 +212,19 @@ namespace kickflip
 					kMyState.l2 = kInputState.Gamepad.bLeftTrigger;
 					kMyState.r2 = kInputState.Gamepad.bRightTrigger;
 					// 拡張
-					kMyState.on.uiButtons |= ( XINPUT_GAMEPAD_TRIGGER_THRESHOLD < kMyState.l2 ) ? GamePad::L2 : 0;
-					kMyState.on.uiButtons |= ( XINPUT_GAMEPAD_TRIGGER_THRESHOLD < kMyState.r2 ) ? GamePad::R2 : 0;
+					kMyState.on |= ( XINPUT_GAMEPAD_TRIGGER_THRESHOLD < kMyState.l2 ) ? GamePad::L2 : 0;
+					kMyState.on |= ( XINPUT_GAMEPAD_TRIGGER_THRESHOLD < kMyState.r2 ) ? GamePad::R2 : 0;
 
-					kMyState.off.uiButtons = ~kMyState.on.uiButtons;
-					kMyState.pressed.uiButtons = 0;
-					kMyState.released.uiButtons = 0;
+					kMyState.off = ~kMyState.on;
+					kMyState.pressed = 0;
+					kMyState.released = 0;
 					m_kLock.Enter();
 					kPad.m_kInputStateLog.push_back(kMyState);
 					m_kLock.Exit();
 				}
+//				DebugTrace("exec:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
+
 				Sleep(0);
-				DebugTrace("exec:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
 
 				return 0;
 			}
@@ -283,11 +284,18 @@ namespace kickflip
 				{
 					// 履歴がなければ自分自身が最新
 				}else{
-					// 履歴の一番最近のものを取得
-					m_kGamePad[idx].m_kInputState = m_kGamePad[idx].m_kInputStateLog.back();
+					// 最新の状態をスタビライザーにフィードバック
+					m_pInputStabilizer->GetPad(idx).m_kInputState = kPad.m_kInputStateLog.back();
+					// カレントのステータスは過去をすべて含む
+					kPad.m_kInputState.on = 0;
+					kPad.m_kInputState.pressed = 0;
+					for(auto ite = kPad.m_kInputStateLog.begin(); kPad.m_kInputStateLog.end()!=ite; ite++)
+					{
+						kPad.m_kInputState.on|=ite->on;
+						kPad.m_kInputState.pressed|=ite->pressed;
+					}
 				}
-				// 最新の状態をスタビライザーにフィードバック
-				m_pInputStabilizer->GetPad(idx).m_kInputState = m_kGamePad[idx].m_kInputState;
+
 
 			}
 
@@ -343,18 +351,18 @@ namespace kickflip
 					std::string strButton;
 					unsigned int idx =0;
 					char buf[2048];
-					sprintf_s(buf," cur:[{%s}/{%s}/{%s}]",getStringFromButtons(kGamePad.GetState().on.uiButtons).c_str(),getStringFromButtons(kGamePad.GetState().pressed.uiButtons).c_str(),getStringFromButtons(kGamePad.GetState().released.uiButtons).c_str());
+					sprintf_s(buf," cur:[{%s}/{%s}/{%s}]",getStringFromButtons(kGamePad.GetState().on).c_str(),getStringFromButtons(kGamePad.GetState().pressed).c_str(),getStringFromButtons(kGamePad.GetState().released).c_str());
 					strButton+=buf;
 
 					for(auto ite = kGamePad.GetStateLog().begin(); kGamePad.GetStateLog().end()!=ite; ite++)
 					{
-						sprintf_s(buf," %d:[{%s}/{%s}/{%s}]",idx,getStringFromButtons(ite->on.uiButtons).c_str(),getStringFromButtons(ite->pressed.uiButtons).c_str(),getStringFromButtons(ite->released.uiButtons).c_str());
+						sprintf_s(buf," %d:[{%s}/{%s}/{%s}]",idx,getStringFromButtons(ite->on).c_str(),getStringFromButtons(ite->pressed).c_str(),getStringFromButtons(ite->released).c_str());
 						strButton+=buf;
 						idx++;
 					}
 
 					DebugPrint(x,y++,"pad(%d):%d [%s]", i, kGamePad.GetStateLog().size(),strButton.c_str());
-					DebugTrace("pad(%d):%d [%s]\n", i, kGamePad.GetStateLog().size(),strButton.c_str());
+//					DebugTrace("pad(%d):%d [%s]\n", i, kGamePad.GetStateLog().size(),strButton.c_str());
 				}else{
 					DebugPrint(x,y++,"pad(%d):OFF", i);
 				}

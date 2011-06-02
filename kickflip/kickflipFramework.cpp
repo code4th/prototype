@@ -15,6 +15,7 @@ kickflipFramework アプリケーション初期化のラッパ
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "d3d9.lib")
 #pragma comment(lib, "d3dx9.lib")
+#pragma comment(lib, "winmm.lib")
 
 // メイン
 int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE , LPTSTR lpCmdLine, int nCmdShow)
@@ -48,7 +49,9 @@ namespace kickflip
 	{
 		if(true == Initialize())
 		{
+			timeBeginPeriod(1);
 			MainLoop();
+			timeEndPeriod(1);
 		}
 
 		Finalize();
@@ -121,6 +124,7 @@ namespace kickflip
 
 		if( false == InitializeInputSystem() ) return false;
 
+		m_rpFrameRate = new FrameRate(m_rpGraphicDevice);
 
 		DebugFont::GetInstance().Initialize(m_rpGraphicDevice);
 		return true;
@@ -157,10 +161,8 @@ namespace kickflip
 
 	void Framework::Update()
 	{
-		Sleep(33);
 		Time::Update();
 		m_rpInputDevice->Update();
-
 		LPDIRECT3DDEVICE9 pD3Dev = m_rpGraphicDevice->GetDevice();
 		if(NULL!=pD3Dev)
 		{
@@ -172,6 +174,9 @@ namespace kickflip
 			UpdateFrame();
 
 			pD3Dev->EndScene();
+
+			m_rpFrameRate->Stabilize();
+
 			pD3Dev->Present( NULL, NULL, NULL, NULL );
 		}
 	}
@@ -179,8 +184,6 @@ namespace kickflip
 	void Framework::Finalize()
 	{
 	}
-
-
 
 }
 
