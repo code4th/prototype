@@ -85,6 +85,7 @@
     <ClCompile Include="..\kickflip\kickflipGraphicShaderObject.cpp" />
     <ClCompile Include="..\kickflip\kickflipInputCommand.cpp" />
     <ClCompile Include="..\kickflip\kickflipInputDevice.cpp" />
+    <ClCompile Include="..\kickflip\kickflipResource.cpp" />
     <ClCompile Include="..\kickflip\kickflipSmartPointer.cpp" />
     <ClCompile Include="..\kickflip\kickflipThread.cpp" />
     <ClCompile Include="..\Prototype.cpp" />
@@ -101,6 +102,7 @@
     <ClInclude Include="..\kickflip\kickflipHashString.h" />
     <ClInclude Include="..\kickflip\kickflipInputCommand.h" />
     <ClInclude Include="..\kickflip\kickflipInputDevice.h" />
+    <ClInclude Include="..\kickflip\kickflipResource.h" />
     <ClInclude Include="..\kickflip\kickflipSmartPointer.h" />
     <ClInclude Include="..\kickflip\kickflipThread.h" />
     <ClInclude Include="..\Prototype.h" />

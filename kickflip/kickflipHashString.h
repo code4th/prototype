@@ -21,6 +21,15 @@ namespace kickflip
 	}
 */
 	typedef unsigned int hash32;
+	struct hashString
+	{
+		hashString(hash32 hash_, char* str_)
+			: hash(hash_)
+			, str(str_)
+		{}
+		const hash32 hash;
+		const char* str;
+	};
 	// ハッシュテーブル
 	static const hash32 crctab[256] = {
 		0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
@@ -98,6 +107,8 @@ namespace kickflip
 	}
 	#define _H(x) HashString(x) 
 
+#define HashString(x) hashString(HashString_(x), x)
+
 #if _DEBUG
 	// デバッグ時
 	class HashStringSynonymChecker
@@ -116,7 +127,7 @@ namespace kickflip
 
 	};
 
-	inline const hash32 HashString(const char* str)
+	inline const hash32 HashString_(const char* str)
 	{
 		const hash32 hash = hashStringDynamic(str);
 		HashStringSynonymChecker::SynonymMap& kSynonymMap(HashStringSynonymChecker::GetInstance().m_kSynonymMap);
@@ -135,6 +146,6 @@ namespace kickflip
 
 #else
 	// リリース時
-	#define HashString(x) hashStringStatic(x) 
+	#define HashString_(x) hashStringStatic(x) 
 #endif
 }

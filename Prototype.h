@@ -4,6 +4,8 @@
 #include "kickflip/kickflipSmartPointer.h"
 #include "kickflip/kickflipThread.h"
 #include "kickflip/kickflipAction.h"
+#include "kickflip/kickflipResource.h"
+#include "kickflip/kickflipHashString.h"
 
 #include <vector>
 
@@ -19,15 +21,12 @@ public:
 
 
 public:
-	ID3DXBuffer* pMatBuf;
-	ID3DXMesh* pMesh;
 	ID3DXEffect* pEffect;
 
 	D3DXMATRIX View, Proj;
-	D3DXMATERIAL* pMatAry;
-	DWORD dwMatNum;
 	float f;
 
+	SmartPtr(Test);
 	class Test : public kickflip::ThreadFunction
 	{
 	public:
@@ -48,13 +47,37 @@ public:
 		std::string name;
 		int x,y;
 	};
-	typedef kickflip::RefPtr<Test> TestRPtr;
-	typedef kickflip::WeakPtr<Test> TestWPtr;
+
+	SmartPtr(MeshObject);
+	class MeshObject : public kickflip::Resource
+	{
+	public:
+		MeshObject(){}
+		virtual ~MeshObject()
+		{
+		}
+
+		virtual bool  Load(const char* kFileName)
+		{
+//			D3DXLoadMeshFromX( _T("media/wall_with_pillars.x"), D3DXMESH_MANAGED, GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
+			D3DXLoadMeshFromX( kFileName, D3DXMESH_MANAGED, NULL, NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
+			pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
+			return true;
+		}
+
+	public:
+		ID3DXBuffer* pMatBuf;
+		ID3DXMesh* pMesh;
+		D3DXMATERIAL* pMatAry;
+		DWORD dwMatNum;
+	};
 
 	std::vector<kickflip::ThreadRPtr> m_rpThreadList;
 
 	kickflip::ThreadRPtr m_rpThread;
 	kickflip::ActionControllerRPtr m_rpActionController;
+	kickflip::ResourceManagerRPtr m_rpResouceManager;
+	MeshObjectRPtr m_rpMeshObject;
 
 };
 

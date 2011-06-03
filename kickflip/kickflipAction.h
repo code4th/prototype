@@ -22,12 +22,12 @@ namespace kickflip
 	class Action : public ReferenceObject
 	{
 	public:
-		Action(hash32 kHash)
+		Action(hashString kHash)
 			: m_fEnterTime(0.f)
 			, m_kHash(kHash)
 		{}
 		virtual ~Action() {}
-		virtual const hash32 GetHash() { return m_kHash;};
+		virtual const hashString GetHash() { return m_kHash;};
 
 		virtual void Enter()
 		{
@@ -42,7 +42,7 @@ namespace kickflip
 		}
 	protected:
 		float m_fEnterTime;
-		hash32 m_kHash;
+		hashString m_kHash;
 
 	};
 
@@ -82,7 +82,7 @@ namespace kickflip
 */
 		void Regist(const ActionRPtr& rpAction)
 		{
-			m_kActionMap[rpAction->GetHash()] = rpAction;
+			m_kActionMap[rpAction->GetHash().hash] = rpAction;
 		}
 		virtual const ActionRPtr& GetDefaultAction()
 		{
@@ -93,9 +93,9 @@ namespace kickflip
 			m_rpDefaultAction = rpAction;
 		}
 
-		bool ChangeAction(hash32 index)
+		bool ChangeAction(hashString index)
 		{
-			auto ite = m_kActionMap.find(index);
+			auto ite = m_kActionMap.find(index.hash);
 			if(m_kActionMap.end() == ite) return false;
 			return ChangeAction(ite->second);
 		}

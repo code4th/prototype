@@ -3,6 +3,17 @@
 kickflipFramework アプリケーション初期化のラッパ
 */
 
+// Directx内のnewが別個にやってるのでnewをdefineする前に一旦読み込む
+#include <d3d9.h>
+#include <d3dx9.h>
+#include <tchar.h>
+
+#if _DEBUG
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+#define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
+#endif
+
 #include "kickflipFramework.h"
 #include "kickflipEmbedded.h"
 #include "kickflipThread.h"
@@ -17,9 +28,14 @@ kickflipFramework アプリケーション初期化のラッパ
 #pragma comment(lib, "d3dx9.lib")
 #pragma comment(lib, "winmm.lib")
 
+
 // メイン
 int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE , LPTSTR lpCmdLine, int nCmdShow)
 {
+#ifdef _DEBUG
+    // デバッグ時はメモリリークを調べる
+    ::_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF | _CRTDBG_ALLOC_MEM_DF);
+#endif
 	// windows情報設定
 	kickflip::Framework::ms_pInstance->SetHInstance(hInstance);
 	kickflip::Framework::ms_pInstance->SetCommandLine(lpCmdLine);

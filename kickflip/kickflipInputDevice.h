@@ -111,8 +111,9 @@ namespace kickflip
 				}
 			}
 
-		public:
+		private:
 			const InputState& GetState() const { return m_kInputState;}
+		public:
 			const InputStateLog& GetStateLog() const { return m_kInputStateLog;}
 			const bool IsConnect() const { return m_bIsConnect;}
 			const bool IsOn(const Buttons kButton) const { return 0!=(m_kInputState.on&kButton);}
@@ -163,7 +164,6 @@ namespace kickflip
 
 			virtual unsigned int Execute(kickflip::Thread* pThread)
 			{
-
 				while(true)
 				{
 					int iIntervalMilliSec = m_uiUpdateInterval - ( Time::GetRealTimeMilliSecond() - m_uiLastUpdateTime);
@@ -183,7 +183,7 @@ namespace kickflip
 					}
 				}
 
-//				DebugTrace("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
+				DebugTrace("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
 				m_uiLastUpdateTime = Time::GetRealTimeMilliSecond();
 
 				for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)

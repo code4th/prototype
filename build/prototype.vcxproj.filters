@@ -43,6 +43,9 @@
     <ClCompile Include="..\kickflip\kickflipFrameRate.cpp">
       <Filter>kickflip</Filter>
     </ClCompile>
+    <ClCompile Include="..\kickflip\kickflipResource.cpp">
+      <Filter>kickflip</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\kickflip\kickflipFramework.h">
@@ -83,6 +86,9 @@
       <Filter>kickflip</Filter>
     </ClInclude>
     <ClInclude Include="..\kickflip\kickflipFrameRate.h">
+      <Filter>kickflip</Filter>
+    </ClInclude>
+    <ClInclude Include="..\kickflip\kickflipResource.h">
       <Filter>kickflip</Filter>
     </ClInclude>
   </ItemGroup>

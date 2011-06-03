@@ -84,9 +84,9 @@ namespace kickflip
 		ShaderFileMap m_kMapShaderFile;
 
 	public:
-		const GraphicShaderObjectRPtr Load( const hash32 fileName, const unsigned long iFlags )
+		const GraphicShaderObjectRPtr Load( const hashString fileName, const unsigned long iFlags )
 		{
-			ShaderFileMap::iterator ite = m_kMapShaderFile.find(fileName);
+			ShaderFileMap::iterator ite = m_kMapShaderFile.find(fileName.hash);
 
 			if (m_kMapShaderFile.end() != ite) 
 			{
@@ -96,17 +96,17 @@ namespace kickflip
 
 			// ì¬
 			ShaderFileRPtr rpShaderFile = new ShaderFile();
-			m_kMapShaderFile[fileName] = rpShaderFile;
+			m_kMapShaderFile[fileName.hash] = rpShaderFile;
 
 			return rpShaderFile->Load(iFlags);
 
 		}
-
+/*
 		const GraphicShaderObjectRPtr Load( const char* fileName, const unsigned long iFlags )
 		{
 			return Load(hashStringDynamic(fileName), iFlags);
 		}
-
+*/
 	};
 }
 

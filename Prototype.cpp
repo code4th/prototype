@@ -9,6 +9,8 @@ Prototype theApp;
 using namespace kickflip;
 void Prototype::ExecOnceBeforeUpdate()
 {
+
+	m_rpResouceManager = new ResourceManager();
 /*
 	for(auto i=0;i<10;i++)
 		m_rpThreadList.push_back(Thread::Create(new Test("Thread1",10,10)));
@@ -18,33 +20,37 @@ void Prototype::ExecOnceBeforeUpdate()
 		(*ite)->Resume();
 	}
 	*/
-	hash32 hash = HashString("teset");
+	hashString hash = HashString("teset");
 
-	hash32 t1 = HashString("a");
-	hash32 t2 = HashString("b");
-	hash32 t3 = HashString("c");
+	hashString t1 = HashString("a");
+	hashString t2 = HashString("b");
+	hashString t3 = HashString("c");
 
-	hash32 dhash1 = HashString("standardShader.fx");
-	hash32 shash1 = HashString("standardShader.fx");
-	hash32 dhash2 = HashString("standardShader1.fx");
-	hash32 shash2 = HashString("standardShader1.fx");
-	hash32 dhash3 = HashString("standardShades.fx");
-	hash32 shash3 = HashString("standardShades.fx");
+	hashString dhash1 = HashString("standardShader.fx");
+	hashString shash1 = HashString("standardShader.fx");
+	hashString dhash2 = HashString("standardShader1.fx");
+	hashString shash2 = HashString("standardShader1.fx");
+	hashString dhash3 = HashString("standardShades.fx");
+	hashString shash3 = HashString("standardShades.fx");
 
 
 	// Xファイルオブジェクト読み込み
+/*
 	D3DXLoadMeshFromX( _T("media/wall_with_pillars.x"), D3DXMESH_MANAGED, GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
 	pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
+*/
+	m_rpMeshObject = m_rpResouceManager->Load<MeshObject>(_H("media/wall_with_pillars.x"));
+
 
 	GetGraphicShader().Load(HashString("Test1.fx"),1);
 	GetGraphicShader().Load(HashString("Test2.fx"),1);
 	GetGraphicShader().Load(HashString("Test1.fx"),2);
-	GetGraphicShader().Load("Test2.fx",2);
+	GetGraphicShader().Load(HashString("Test2.fx"),2);
 
-	GetGraphicShader().Load("Test1.fx",1);
-	GetGraphicShader().Load("Test2.fx",1);
-	GetGraphicShader().Load("Test1.fx",2);
-	GetGraphicShader().Load("Test2.fx",2);
+	GetGraphicShader().Load(HashString("Test1.fx"),1);
+	GetGraphicShader().Load(HashString("Test2.fx"),1);
+	GetGraphicShader().Load(HashString("Test1.fx"),2);
+	GetGraphicShader().Load(HashString("Test2.fx"),2);
 
 	// エフェクトの読み込み
 	LPD3DXBUFFER pErr = NULL;
@@ -78,7 +84,7 @@ void Prototype::ExecOnceBeforeUpdate()
 	class Idol :public Action
 	{
 	public:
-		Idol(hash32 kHash)
+		Idol(hashString kHash)
 			: Action(kHash)
 		{
 		}
@@ -90,7 +96,7 @@ void Prototype::ExecOnceBeforeUpdate()
 	class Punch :public Action
 	{
 	public:
-		Punch(hash32 kHash)
+		Punch(hashString kHash)
 			: Action(kHash)
 		{
 		}
@@ -107,7 +113,7 @@ void Prototype::ExecOnceBeforeUpdate()
 	class Kick :public Action
 	{
 	public:
-		Kick(hash32 kHash)
+		Kick(hashString kHash)
 			: Action(kHash)
 		{
 		}

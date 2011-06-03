@@ -16,8 +16,8 @@ namespace kickflip
 	// ----------------------------------------------------------------------------
 #define SmartPtr(classname) \
 	class classname; \
-	typedef RefPtr<classname> classname##RPtr; \
-	typedef WeakPtr<classname> classname##WPtr
+	typedef kickflip::RefPtr<classname> classname##RPtr; \
+	typedef kickflip::WeakPtr<classname> classname##WPtr
 
 	//!	NULLÉ}ÉNÉçíËã`
 #ifndef NULL
@@ -67,7 +67,11 @@ namespace kickflip
 		template<class SRC>
 		inline RefPtr(const RefPtr<SRC>& ptr)
 		{
-			m_pObject = ptr.m_pObject;
+#if _DEBUG
+			assert( dynamic_cast<T*>(ptr.m_pObject) == ptr.m_pObject );
+#endif
+			m_pObject = static_cast<T*>(ptr.m_pObject);
+
 			if (m_pObject)
 				m_pObject->AddRef();
 		}
@@ -113,6 +117,19 @@ namespace kickflip
 			}
 			return *this;
 		}
+		template<class SRC>
+		inline RefPtr<SRC> downcast() 
+		{
+#if _DEBUG
+			assert( dynamic_cast<SRC*>(m_pObject) == m_pObject );
+#endif
+			SRC *pObject = static_cast<SRC*>(m_pObject);
+
+			if(NULL != pObject)
+				pObject->AddRef();
+			return RefPtr<SRC>(pObject);
+		}
+
 		// comparisons
 
 		inline bool operator==(T* pObject) const
