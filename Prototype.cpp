@@ -39,7 +39,8 @@ void Prototype::ExecOnceBeforeUpdate()
 	D3DXLoadMeshFromX( _T("media/wall_with_pillars.x"), D3DXMESH_MANAGED, GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
 	pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
 */
-	m_rpMeshObject = m_rpResouceManager->Load<MeshObject>(_H("media/wall_with_pillars.x"));
+//	m_rpMeshObject = m_rpResouceManager->Load<MeshObject>(_H("media/wall_with_pillars.x"),true);
+	m_rpMeshObject = m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/wall_with_pillars.x"));
 
 
 	GetGraphicShader().Load(HashString("Test1.fx"),1);
@@ -145,7 +146,7 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,1,"deltaSecond     :(frame:%f,realtime:%f)",Time::GetFrameDeltaTimeSecond(),Time::GetRealDeltaTimeSecond());
 	DebugPrint(0,2,"deltaMicroSecond:(frame:%d)",Time::GetFrameDeltaTimeMicroSecond());
 	DebugPrint(0,3,"deltaMicroSecond:(realtime:%d)",Time::GetRealDeltaTimeMicroSecond());
-	DebugPrint(0,4,"fps:%f(ave:%f)\n",Time::GetFPS(),Time::GetFPSAve());
+	DebugPrint(0,4,"fps:%f(ave:%.1f)\n",Time::GetFPS(),Time::GetFPSAve());
 
 	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond());
 	static int iSleep = 10;
@@ -195,13 +196,15 @@ void Prototype::UpdateFrame()
 	pEffect->Begin( &numPass, 0 );
 
 	pEffect->BeginPass(0);
-/*
-	for(DWORD i=0; i<dwMatNum; i++)
+	if(true == m_rpMeshObject->IsComplete())
 	{
-	GetGraphicDevice()->SetMaterial( &(pMatAry[i].MatD3D) );
-	pMesh->DrawSubset(i);
+		for(DWORD i=0; i<m_rpMeshObject->dwMatNum; i++)
+		{
+			GetGraphicDevice()->SetMaterial( &(m_rpMeshObject->pMatAry[i].MatD3D) );
+			m_rpMeshObject->pMesh->DrawSubset(i);
+		}
 	}
-*/
+
 	pEffect->EndPass();
 	pEffect->End();
 

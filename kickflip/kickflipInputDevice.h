@@ -19,7 +19,6 @@ namespace kickflip
 	{
 	public:
 		InputDevice(void)
-			: m_pInputStabilizer(NULL)
 		{}
 
 		virtual ~InputDevice(void){}
@@ -167,6 +166,8 @@ namespace kickflip
 				while(true)
 				{
 					int iIntervalMilliSec = m_uiUpdateInterval - ( Time::GetRealTimeMilliSecond() - m_uiLastUpdateTime);
+					if(static_cast<int>(m_uiUpdateInterval)<iIntervalMilliSec) iIntervalMilliSec = m_uiUpdateInterval;
+//					DebugTrace("sleep:%dms\n",iIntervalMilliSec);
 					if(0>=iIntervalMilliSec)
 					{
 						// 過ぎたので速攻
@@ -179,7 +180,8 @@ namespace kickflip
 						break;
 					}else{
 						// 半分やって様子見
-						Sleep( iIntervalMilliSec/2 );
+//						Sleep( iIntervalMilliSec/2 );
+						Sleep( iIntervalMilliSec );
 					}
 				}
 
@@ -218,9 +220,9 @@ namespace kickflip
 					kMyState.off = ~kMyState.on;
 					kMyState.pressed = 0;
 					kMyState.released = 0;
-					m_kLock.Enter();
+					Lock();
 					kPad.m_kInputStateLog.push_back(kMyState);
-					m_kLock.Exit();
+					Unlock();
 				}
 //				DebugTrace("exec:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
 
@@ -233,7 +235,6 @@ namespace kickflip
 				return m_kGamePad[idx];
 			}
 
-			Lock m_kLock;
 		private:
 			InputDevice::GamePad m_kGamePad[InputDevice::GamePad::MAX_NUM];
 			unsigned int m_uiLastUpdateTime;
@@ -244,7 +245,6 @@ namespace kickflip
 		GamePad m_kGamePad[GamePad::MAX_NUM];
 		GamePad m_kGamePadEmpty;
 		ThreadRPtr m_rpThread;
-		InputStabilizer* m_pInputStabilizer;
 
 	public:
 		bool Initialize()
@@ -258,23 +258,22 @@ namespace kickflip
 			m_rpThread = Thread::Create( new InputStabilizer(), Thread::TIME_CRITICAL );
 			if ( NULL == m_rpThread ) return false;
 
-			m_pInputStabilizer = static_cast<InputStabilizer*>( static_cast<ThreadFunction*>( m_rpThread->GetFunction() ) );
 			m_rpThread->Resume();
 
 			return true;
 		}
 		void Update()
 		{
-
-			m_pInputStabilizer->m_kLock.Enter();
+			m_rpThread->Lock();
+			InputStabilizerRPtr rpInputStabilizer = m_rpThread->GetThreadFunction();
 			for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
 			{
-				GamePad& kPadMapLog = m_pInputStabilizer->GetPad(idx);
+				GamePad& kPadMapLog = rpInputStabilizer->GetPad(idx);
 				m_kGamePad[idx] = kPadMapLog;
 
 				kPadMapLog.m_kInputStateLog.clear();
 			}
-			m_pInputStabilizer->m_kLock.Exit();
+			m_rpThread->Unlock();
 
 			for( auto idx = 0; GamePad::MAX_NUM>idx; idx++ )
 			{
@@ -285,7 +284,7 @@ namespace kickflip
 					// 履歴がなければ自分自身が最新
 				}else{
 					// 最新の状態をスタビライザーにフィードバック
-					m_pInputStabilizer->GetPad(idx).m_kInputState = kPad.m_kInputStateLog.back();
+					rpInputStabilizer->GetPad(idx).m_kInputState = kPad.m_kInputStateLog.back();
 					// カレントのステータスは過去をすべて含む
 					kPad.m_kInputState.on = 0;
 					kPad.m_kInputState.pressed = 0;

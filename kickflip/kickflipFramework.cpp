@@ -65,6 +65,7 @@ namespace kickflip
 	{
 		if(true == Initialize())
 		{
+//			SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
 			timeBeginPeriod(1);
 			MainLoop();
 			timeEndPeriod(1);
@@ -168,7 +169,6 @@ namespace kickflip
 			else
 			{
 				Update();
-				Sleep(0);
 			}
 		}
 

@@ -24,7 +24,7 @@ namespace kickflip
 	{
 	public:
 		static Framework* ms_pInstance;
-
+		static const Framework* Get(){ return ms_pInstance;}
 		Framework(void);
 		virtual ~Framework(void);
 
@@ -47,10 +47,10 @@ namespace kickflip
 
 
 		void Shutdown(){ PostMessage(m_hWnd, WM_DESTROY, 0, 0); }
-		LPDIRECT3DDEVICE9 GetGraphicDevice() { return m_rpGraphicDevice->GetDevice(); }
-		GraphicShader& GetGraphicShader() { return m_rpGraphicDevice->GetShader(); }
-		const InputDevice::GamePad& GetGamePad(unsigned int idx) { return m_rpInputDevice->GetGamePad(idx); }
-		const InputDeviceRPtr& GetInputDevice() { return m_rpInputDevice; }
+		LPDIRECT3DDEVICE9 GetGraphicDevice() const { return m_rpGraphicDevice->GetDevice(); }
+		GraphicShader& GetGraphicShader() const { return m_rpGraphicDevice->GetShader(); }
+		const InputDevice::GamePad& GetGamePad(unsigned int idx) const { return m_rpInputDevice->GetGamePad(idx); }
+		const InputDeviceRPtr& GetInputDevice() const { return m_rpInputDevice; }
 
 	private:
 	private:

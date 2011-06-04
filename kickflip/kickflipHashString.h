@@ -28,7 +28,7 @@ namespace kickflip
 			, str(str_)
 		{}
 		const hash32 hash;
-		const char* str;
+		const std::string str;
 	};
 	// ハッシュテーブル
 	static const hash32 crctab[256] = {

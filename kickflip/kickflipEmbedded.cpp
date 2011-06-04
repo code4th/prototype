@@ -18,7 +18,7 @@ namespace kickflip
 		LONGLONG m_iFrameDeltaMicroSecond;
 
 		std::deque<double> m_fFPSLog;
-		const unsigned int iMaxFPSLog = 300;
+		const unsigned int iMaxFPSLog = 30;
 		double m_fFPSAve;
 
 		LARGE_INTEGER GetFrameTimeCount() { return m_iFrameCounter; }

@@ -16,6 +16,19 @@ pThread = Thread::Create(new ThreadFunction(true));
 
 namespace kickflip
 {
+	class Lock
+	{
+	private:
+		CRITICAL_SECTION	m_cs;
+	public:
+		Lock()	{ InitializeCriticalSection(&m_cs); }
+		~Lock() { DeleteCriticalSection(&m_cs);		}
+		void Enter(){ EnterCriticalSection(&m_cs);	}
+		void Exit()	{ LeaveCriticalSection(&m_cs);	}
+		bool Check(){ return FALSE!=TryEnterCriticalSection(&m_cs); }
+
+	};
+
 	SmartPtr(Thread);
 
 	// スレッドからコールされるオブジェクト
@@ -35,12 +48,16 @@ namespace kickflip
 		{
 		}
 		virtual unsigned int Execute(Thread* pThread) = 0;
+		void Lock() { m_kLock.Enter(); }
+		void Unlock() { m_kLock.Exit(); }
+
 	private:
 		void StopLoop() { m_bIsLoop = false; }
 		bool IsComplate() { return m_bComplete; }
 		virtual bool IsLoop() {return m_bIsLoop;}
 		virtual unsigned int GetSleepTime() { return m_uiSleepTime; }
 	private:
+		kickflip::Lock m_kLock;
 		bool m_bIsLoop;
 		unsigned int m_uiSleepTime;
 		bool m_bComplete;
@@ -166,6 +183,8 @@ namespace kickflip
 			}
 			return iSuspendCountLast;
 		}
+		void Lock() { if(NULL!=m_rpThreadFunction) m_rpThreadFunction->Lock();}
+		void Unlock() { if(NULL!=m_rpThreadFunction) m_rpThreadFunction->Unlock();}
 
 		bool WaitForComplete()
 		{
@@ -182,7 +201,7 @@ namespace kickflip
 
 			return false;
 		}
-		ThreadFunctionRPtr GetFunction() { return m_rpThreadFunction; }
+		ThreadFunctionRPtr GetThreadFunction() { return m_rpThreadFunction; }
 
 	private:
 		bool CreateThread_()
@@ -262,33 +281,6 @@ namespace kickflip
 
 	*/
 
-		class Lock
-		{
-			CRITICAL_SECTION	m_cs;
-		public:
-			Lock()
-			{
-				InitializeCriticalSection(&m_cs);
-			}
-			~Lock()
-			{
-				DeleteCriticalSection(&m_cs);
-			}
-
-			void Enter()
-			{
-				EnterCriticalSection(&m_cs);
-			}
-			bool Check()
-			{
-				return TryEnterCriticalSection(&m_cs)!=FALSE;
-			}
-			void Exit()
-			{
-				LeaveCriticalSection(&m_cs);
-			}
-
-		};
 
 }
 

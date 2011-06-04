@@ -52,15 +52,17 @@ public:
 	class MeshObject : public kickflip::Resource
 	{
 	public:
-		MeshObject(){}
+		MeshObject(const kickflip::hashString& kFileName)
+			: Resource(kFileName)
+		{}
 		virtual ~MeshObject()
 		{
 		}
 
-		virtual bool  Load(const char* kFileName)
+		virtual bool Load()
 		{
 //			D3DXLoadMeshFromX( _T("media/wall_with_pillars.x"), D3DXMESH_MANAGED, GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
-			D3DXLoadMeshFromX( kFileName, D3DXMESH_MANAGED, NULL, NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
+			D3DXLoadMeshFromX( m_kFileName.str.c_str(), D3DXMESH_MANAGED, Framework::Get()->GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
 			pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
 			return true;
 		}
