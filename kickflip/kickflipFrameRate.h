@@ -56,7 +56,9 @@ namespace kickflip
 							break;
 						}else{
 							// Œ»Ý‚Ìƒ‰ƒCƒ“‚ð•Û‘¶
-							iLastLine = rs.ScanLine; 
+							iLastLine = rs.ScanLine;
+							if(700>iLastLine)
+								Sleep(1);
 						}
 					}
 				};
