@@ -79,7 +79,7 @@ public:
 	kickflip::ThreadRPtr m_rpThread;
 	kickflip::ActionControllerRPtr m_rpActionController;
 	kickflip::ResourceManagerRPtr m_rpResouceManager;
-	MeshObjectRPtr m_rpMeshObject;
+	std::vector<MeshObjectRPtr> m_kMeshObjectList;
 
 };
 

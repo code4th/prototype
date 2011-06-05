@@ -162,26 +162,43 @@ namespace kickflip
 		}		
 		int Suspend()
 		{
-			int iRet = SuspendThread(m_hThread);
-			if ( -1 != iRet ) m_eStatus = SUSPENDED;
-			return iRet;
+			if(RUNNING != m_eStatus) return 0;
+
+			while(SUSPENDED!= m_eStatus)
+			{
+				int iRet = SuspendThread(m_hThread);
+				if ( -1 != iRet )
+				{
+					m_eStatus = SUSPENDED;
+					return iRet;
+				}
+			}
+			return 0;
+
 		}
 		int Resume()
 		{
-			int iSuspendCountLast = ResumeThread(m_hThread);
-			switch (iSuspendCountLast)
+			if(SUSPENDED != m_eStatus) return 0;
+
+			while(RUNNING!= m_eStatus)
 			{
-			case -1: 
-				break;
-			case 0: 
-			case 1:
-				m_eStatus = RUNNING;
-				break;
-			default:
-				m_eStatus = SUSPENDED;
-				break;
+
+				int iSuspendCountLast = ResumeThread(m_hThread);
+				switch (iSuspendCountLast)
+				{
+				case -1: 
+					break;
+				case 0: 
+				case 1:
+					m_eStatus = RUNNING;
+					return iSuspendCountLast;
+					break;
+				default:
+					m_eStatus = SUSPENDED;
+					break;
+				}
 			}
-			return iSuspendCountLast;
+			return 0;
 		}
 		void Lock() { if(NULL!=m_rpThreadFunction) m_rpThreadFunction->Lock();}
 		void Unlock() { if(NULL!=m_rpThreadFunction) m_rpThreadFunction->Unlock();}
@@ -191,7 +208,7 @@ namespace kickflip
 			switch(m_eStatus)
 			{
 			case RUNNING:
-				while(SUSPENDED != m_eStatus) Suspend();
+				Suspend();
 				m_rpThreadFunction->StopLoop();
 				Resume();
 				WaitForSingleObject(m_hThread, INFINITE);

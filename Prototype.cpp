@@ -40,7 +40,10 @@ void Prototype::ExecOnceBeforeUpdate()
 	pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
 */
 //	m_rpMeshObject = m_rpResouceManager->Load<MeshObject>(_H("media/wall_with_pillars.x"),true);
-	m_rpMeshObject = m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/wall_with_pillars.x"));
+	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Big_Ears.x")));
+	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Sad.x")));
+	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/LandShark.x")));
+	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/wall_with_pillars.x")));
 
 
 	GetGraphicShader().Load(HashString("Test1.fx"),1);
@@ -149,7 +152,7 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,4,"fps:%f(ave:%.1f)\n",Time::GetFPS(),Time::GetFPSAve());
 
 	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond());
-	static int iSleep = 10;
+	static int iSleep = 1;
 	DebugPrint(0,11,"sleep:%d",iSleep);
 	if(true == GetGamePad(0).IsPressed(InputDevice::GamePad::A))
 	{
@@ -196,12 +199,15 @@ void Prototype::UpdateFrame()
 	pEffect->Begin( &numPass, 0 );
 
 	pEffect->BeginPass(0);
-	if(true == m_rpMeshObject->IsComplete())
+	for(auto ite = m_kMeshObjectList.begin(); m_kMeshObjectList.end()!=ite; ite++)
 	{
-		for(DWORD i=0; i<m_rpMeshObject->dwMatNum; i++)
+		if(true == (*ite)->IsComplete())
 		{
-			GetGraphicDevice()->SetMaterial( &(m_rpMeshObject->pMatAry[i].MatD3D) );
-			m_rpMeshObject->pMesh->DrawSubset(i);
+			for(DWORD i=0; i<(*ite)->dwMatNum; i++)
+			{
+				GetGraphicDevice()->SetMaterial( &((*ite)->pMatAry[i].MatD3D) );
+				(*ite)->pMesh->DrawSubset(i);
+			}
 		}
 	}
 

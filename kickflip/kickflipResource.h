@@ -65,7 +65,7 @@ namespace kickflip
 			: m_rpThread(NULL)
 		{
 			m_kResourceMap.clear();
-			m_kResourceList.clear();
+			m_kResuestQueue.clear();
 		}
 
 		virtual ~ResourceManager(void){}
@@ -84,24 +84,25 @@ namespace kickflip
 			virtual unsigned int Execute(kickflip::Thread* pThread)
 			{
 				Lock();
-				ResourceList& kResourceList = m_pResourceManager->m_kResourceList;
-				if(false == kResourceList.empty())
+				ResourceList& kResuestQueue = m_pResourceManager->m_kResuestQueue;
+				if(false == kResuestQueue.empty())
 				{
-					auto ite = kResourceList.begin();
+					auto ite = kResuestQueue.begin();
 					Unlock();
 					// ロード処理
 					if(true == (*ite)->Load())
 					{
 						(*ite)->m_eState = Resource::COMPLETE;
+						// ロード後処理
+						(*ite)->CompleteLoad();
 					}else{
 						(*ite)->m_eState = Resource::UNKNOWN;
 					}
-					// ロード後処理
-					(*ite)->CompleteLoad();
 					Lock();
-					kResourceList.erase(ite);
+					kResuestQueue.erase(ite);
 					Unlock();
 				}else{
+					pThread->Suspend();
 					Unlock();
 				}
 
@@ -120,7 +121,7 @@ namespace kickflip
 				return false;
 			}
 			m_rpThread->Lock();
-			m_kResourceList.push_back(pResource);
+			m_kResuestQueue.push_back(pResource);
 			m_rpThread->Unlock();
 
 			return true;
@@ -132,7 +133,7 @@ namespace kickflip
 		typedef std::vector<Resource*>	ResourceList;
 
 		ResourceMap		m_kResourceMap;
-		ResourceList	m_kResourceList;
+		ResourceList	m_kResuestQueue;
 		
 
 		Lock m_kLock;
@@ -145,8 +146,6 @@ namespace kickflip
 			{
 				m_rpThread = Thread::Create( new BackGroundLoader(this) );
 				if ( NULL == m_rpThread ) return false;
-
-				m_rpThread->Resume();
 			}
 			m_rpThread->Resume();
 
