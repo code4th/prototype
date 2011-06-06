@@ -16,6 +16,69 @@ pThread = Thread::Create(new ThreadFunction(true));
 
 namespace kickflip
 {
+	class Semaphore
+	{
+	public:
+		Semaphore()
+			: m_iCount(0)
+			, m_iMaxCount(1)
+		{
+			m_hSemaphore = CreateSemaphore(NULL, 0, 1, NULL);
+		}
+		//---------------------------------------------------------------------------
+		Semaphore(int iCount)
+			: m_iCount(iCount)
+			, m_iMaxCount(iCount + 1)
+		{
+			m_hSemaphore = CreateSemaphore(NULL, m_iCount, m_iMaxCount, NULL);
+		}
+		//---------------------------------------------------------------------------
+		Semaphore(int iCount, int iMaxCount)
+			: m_iCount(iCount)
+			, m_iMaxCount(iMaxCount)
+		{
+			m_hSemaphore = CreateSemaphore(NULL, m_iCount, m_iMaxCount, NULL);
+		}
+		//---------------------------------------------------------------------------
+		~Semaphore()
+		{
+			CloseHandle(m_hSemaphore);
+		}
+		//---------------------------------------------------------------------------
+		int GetCount()
+		{
+			return m_iCount;
+		}
+		//---------------------------------------------------------------------------
+		int GetMaxCount()
+		{
+			return m_iMaxCount;
+		}
+		//---------------------------------------------------------------------------
+		int Signal()
+		{
+			BOOL bIsRelease = ReleaseSemaphore(m_hSemaphore, 1, NULL);
+			if(TRUE == bIsRelease)
+			{
+				InterlockedIncrement((LONG*)&m_iCount);
+			}
+			return m_iCount;
+		}
+		//---------------------------------------------------------------------------
+		int Wait()
+		{
+			WaitForSingleObject(m_hSemaphore, INFINITE);
+			return InterlockedDecrement((LONG*)&m_iCount);
+		}
+
+	protected:
+		volatile int m_iCount;
+		int m_iMaxCount;
+
+		HANDLE m_hSemaphore;
+
+	};
+
 	class Lock
 	{
 	private:
@@ -38,10 +101,8 @@ namespace kickflip
 	private:
 		friend class Thread;
 	public:
-		ThreadFunction(bool bIsLoop = false, unsigned int uiSleepTime = 0 )
-			: m_bIsLoop(bIsLoop)
-			, m_uiSleepTime(uiSleepTime)
-			, m_bComplete(false)
+		ThreadFunction()
+			: m_bIsContinue(false)
 		{
 		}
 		virtual ~ThreadFunction()
@@ -52,15 +113,13 @@ namespace kickflip
 		void Unlock() { m_kLock.Exit(); }
 
 	private:
-		void StopLoop() { m_bIsLoop = false; }
-		bool IsComplate() { return m_bComplete; }
-		virtual bool IsLoop() {return m_bIsLoop;}
-		virtual unsigned int GetSleepTime() { return m_uiSleepTime; }
-	private:
 		kickflip::Lock m_kLock;
-		bool m_bIsLoop;
-		unsigned int m_uiSleepTime;
-		bool m_bComplete;
+		volatile bool m_bIsContinue;
+		bool IsContinue(){ return m_bIsContinue; }
+		void Continue(){ m_bIsContinue = true; }
+
+	protected:
+		void StopContinue(){ m_bIsContinue = false; }
 
 	};
 
@@ -87,9 +146,9 @@ namespace kickflip
 		};
 
 	public:
-		static ThreadRPtr Create( ThreadFunctionRPtr rpThreadFunction, Priority ePriority = NORMAL, unsigned int uiStackSize = 0 )
+		static ThreadRPtr Create( ThreadFunctionRPtr rpThreadFunction, bool bIsLoop = false, bool uiSleepTime = 0, Priority ePriority = NORMAL, unsigned int uiStackSize = 0)
 		{
-			Thread* pThread = new Thread(rpThreadFunction, uiStackSize);
+			Thread* pThread = new Thread(rpThreadFunction, bIsLoop, uiSleepTime, uiStackSize);
 
 			if (NULL != pThread)
 			{
@@ -104,18 +163,29 @@ namespace kickflip
 			return pThread;
 		}
 	protected:
-		Thread( ThreadFunctionRPtr rpThreadFunction, unsigned int uiStackSize )
+		Thread( ThreadFunctionRPtr rpThreadFunction, bool bIsLoop, bool uiSleepTime, unsigned int uiStackSize )
 			: m_hThread(NULL)
 			, m_rpThreadFunction(rpThreadFunction)
 			, m_ePriority(NORMAL)
 			, m_uiStackSize(uiStackSize)
 			, m_uiReturn(0)
 			, m_eStatus(UNKNOWN)
-		{}
+			, m_bIsLoop(bIsLoop)
+			, m_uiSleepTime(uiSleepTime)
+			, m_kComplete(0)
+			, m_kStart(0)
+
+		{
+		    SignalComplete();
+			SignalStart();
+		}
 	public:
 		~Thread()
 		{
+			SignalStart();
+		    Shutdown();
 			WaitForComplete();
+			m_rpThreadFunction = NULL;
 
 			if (m_hThread) CloseHandle(m_hThread);
 			m_hThread = 0;
@@ -162,63 +232,58 @@ namespace kickflip
 		}		
 		int Suspend()
 		{
-			if(RUNNING != m_eStatus) return 0;
+			if (m_hThread == 0)
+				return -1;
 
-			while(SUSPENDED!= m_eStatus)
-			{
-				int iRet = SuspendThread(m_hThread);
-				if ( -1 != iRet )
-				{
-					m_eStatus = SUSPENDED;
-					return iRet;
-				}
-			}
-			return 0;
+			int iRet = SuspendThread(m_hThread);
+			if (iRet != -1)
+				m_eStatus = SUSPENDED;
+			return iRet;
 
 		}
 		int Resume()
 		{
-			if(SUSPENDED != m_eStatus) return 0;
+			if (m_hThread == 0)
+				return -1;
 
-			while(RUNNING!= m_eStatus)
+			int iPreviousSuspendCount = ResumeThread(m_hThread);
+			switch (iPreviousSuspendCount)
 			{
+			case -1: 
+				break;
+			case 0: // fall through
+			case 1:
+				m_eStatus = RUNNING;
 
-				int iSuspendCountLast = ResumeThread(m_hThread);
-				switch (iSuspendCountLast)
-				{
-				case -1: 
-					break;
-				case 0: 
-				case 1:
-					m_eStatus = RUNNING;
-					return iSuspendCountLast;
-					break;
-				default:
-					m_eStatus = SUSPENDED;
-					break;
-				}
+				break;
+			default:
+				m_eStatus = SUSPENDED;
 			}
-			return 0;
+			return iPreviousSuspendCount;
 		}
 		void Lock() { if(NULL!=m_rpThreadFunction) m_rpThreadFunction->Lock();}
 		void Unlock() { if(NULL!=m_rpThreadFunction) m_rpThreadFunction->Unlock();}
 
 		bool WaitForComplete()
 		{
-			switch(m_eStatus)
+			if (m_eStatus == RUNNING)
 			{
-			case RUNNING:
-				Suspend();
-				m_rpThreadFunction->StopLoop();
-				Resume();
 				WaitForSingleObject(m_hThread, INFINITE);
+
 				m_eStatus = COMPLETE;
+
 				return true;
 			}
 
 			return false;
 		}
+
 		ThreadFunctionRPtr GetThreadFunction() { return m_rpThreadFunction; }
+
+		void SignalStart()
+		{
+			m_kStart.Signal();
+		}
 
 	private:
 		bool CreateThread_()
@@ -248,21 +313,61 @@ namespace kickflip
 		}
 		static unsigned int WINAPI callThreadObject(void* p)
 		{
-			Thread* pThis = reinterpret_cast<Thread*>(p);
 
-			ThreadFunction* pObject = pThis->m_rpThreadFunction;
-			while(true)
+			Thread* pThis = reinterpret_cast<Thread*>(p);
+			ThreadFunction* pThreadFunction = pThis->m_rpThreadFunction;
+			pThis->WaitStart();
+			while(pThis->IsLoop())
 			{
-				pThis->m_uiReturn = pObject->Execute(pThis);
-				if(false == pObject->IsLoop()) break;
-				Sleep(pObject->GetSleepTime());
+				pThreadFunction->Continue();
+				pThis->m_uiReturn = pThreadFunction->Execute(pThis);				
+				if(pThreadFunction->IsContinue())
+				{
+					Sleep(pThis->GetSleepTime());
+					pThis->SignalStart();
+				}
+				pThis->SignalComplete();
+				pThis->WaitStart();
 			}
 
-			pThis->m_rpThreadFunction->m_bComplete = true;
+			// If last loop was set, then thread is terminated by some controlling 
+			// thread.
+			pThis->SignalComplete();
 			pThis->m_rpThreadFunction = NULL;
 			pThis->m_eStatus = COMPLETE;
 
 			return pThis->m_uiReturn;
+
+			return pThis->m_uiReturn;
+
+		}
+		void StopLoop() { m_bIsLoop = false; }
+		virtual bool IsLoop() {return m_bIsLoop;}
+		virtual unsigned int GetSleepTime() { return m_uiSleepTime; }
+
+		void WaitStart()
+		{
+			m_kStart.Wait();
+		}
+		void WaitComplete()
+		{
+			m_kComplete.Wait();
+		}
+		void SignalComplete()
+		{
+			m_kComplete.Signal();
+		}
+		void Shutdown()
+		{
+			// SetLastLoop() is not threadsafe to be called in the middle of a loop,
+			// because "DoLoop(); Shutdown();" might not iterate if SetLastLoop()
+			// gets set before the loop checks it.
+			WaitComplete();
+			SignalComplete();
+			StopLoop();
+
+			// Now that we're at the end, signal start to finish the thread
+			SignalStart();
 		}
 
 	protected:
@@ -273,6 +378,14 @@ namespace kickflip
 
 		volatile unsigned int m_uiReturn;
 		volatile Status m_eStatus;
+
+		volatile bool m_bIsLoop;
+		unsigned int m_uiSleepTime;
+
+		kickflip::Semaphore m_kComplete;
+		kickflip::Semaphore m_kStart;
+
+
 	};
 
 

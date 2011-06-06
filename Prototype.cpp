@@ -34,16 +34,6 @@ void Prototype::ExecOnceBeforeUpdate()
 	hashString shash3 = HashString("standardShades.fx");
 
 
-	// Xファイルオブジェクト読み込み
-/*
-	D3DXLoadMeshFromX( _T("media/wall_with_pillars.x"), D3DXMESH_MANAGED, GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
-	pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
-*/
-//	m_rpMeshObject = m_rpResouceManager->Load<MeshObject>(_H("media/wall_with_pillars.x"),true);
-	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Big_Ears.x")));
-	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Sad.x")));
-	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/LandShark.x")));
-	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/wall_with_pillars.x")));
 
 
 	GetGraphicShader().Load(HashString("Test1.fx"),1);
@@ -140,6 +130,16 @@ void Prototype::ExecOnceBeforeUpdate()
 	
 	m_rpActionController->ChangeAction(_H("Punch"));
 
+	// Xファイルオブジェクト読み込み
+/*
+	D3DXLoadMeshFromX( _T("media/wall_with_pillars.x"), D3DXMESH_MANAGED, GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
+	pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
+*/
+//	m_rpMeshObject = m_rpResouceManager->Load<MeshObject>(_H("media/wall_with_pillars.x"),true);
+	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Big_Ears.x")));
+	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Sad.x")));
+	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/LandShark.x")));
+	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/wall_with_pillars.x")));
 
 }
 

@@ -8,6 +8,7 @@ smartPointer.h
 // ----------------------------------------------------------------------------
 // Include
 // ----------------------------------------------------------------------------
+#include <Windows.h>
 #include <assert.h>
 namespace kickflip
 {
@@ -297,7 +298,7 @@ namespace kickflip
 		template<typename B> friend class RefPtr;
 		ReferenceObject* m_pRealObject;
 		//	mutable unsigned int m_uiWeakCount;
-		mutable volatile int m_uiWeakCount;
+		mutable volatile LONG m_uiWeakCount;
 	public:
 		inline RefReferenceObject(ReferenceObject* pObject = NULL)
 			: m_pRealObject(pObject)
@@ -310,14 +311,14 @@ namespace kickflip
 	private:
 		inline void AddRef() const
 		{
-			//		InterlockedExchangeAdd(&m_uiWeakCount,1);
-			m_uiWeakCount++;
+			InterlockedIncrement(&m_uiWeakCount);
+			//		m_uiWeakCount++;
 		}
 		inline void DelRef() const
 		{
-			//		InterlockedExchangeAdd(&m_uiWeakCount,-1);
-			m_uiWeakCount--;
-			if(m_uiWeakCount==0) delete this;
+			//		m_uiWeakCount--;
+			if( 0 == InterlockedDecrement(&m_uiWeakCount) )
+				delete this;
 		}
 
 	};
@@ -333,7 +334,7 @@ namespace kickflip
 		template<typename A> friend class WeakPtr;
 		template<typename B> friend class RefPtr;
 	private:
-		mutable volatile int m_uiRefCount;
+		mutable volatile LONG m_uiRefCount;
 		//	mutable unsigned int m_uiRefCount;				// 権利を持っている人の数
 		RefReferenceObject* m_pRefMe;			// 自分を参照するオブジェクト
 	public:
@@ -349,14 +350,14 @@ namespace kickflip
 	private:
 		inline void AddRef() const 
 		{
-			//		InterlockedExchangeAdd(&m_uiRefCount,1);
-			m_uiRefCount++;
+			InterlockedIncrement(&m_uiRefCount);
+			//		m_uiRefCount++;
 		}
 		inline void DelRef() const
 		{
-			//		InterlockedExchangeAdd(&m_uiRefCount,-1);
-			m_uiRefCount--;
-			if(m_uiRefCount==0) delete this;
+			//		m_uiRefCount--;
+			if(0 == InterlockedDecrement(&m_uiRefCount) )
+				delete this;
 		}
 
 		inline RefReferenceObject* GetRefMe()

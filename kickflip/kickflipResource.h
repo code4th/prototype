@@ -65,7 +65,6 @@ namespace kickflip
 			: m_rpThread(NULL)
 		{
 			m_kResourceMap.clear();
-			m_kResuestQueue.clear();
 		}
 
 		virtual ~ResourceManager(void){}
@@ -76,53 +75,61 @@ namespace kickflip
 		{
 		public:
 			BackGroundLoader(ResourceManager* pResourceManager)
-				: ThreadFunction(true,0)
-				, m_pResourceManager(pResourceManager)
-			{}
+				: m_pResourceManager(pResourceManager)
+			{
+				m_kResuestQueue.clear();
+			}
 			virtual ~BackGroundLoader()
 			{}
 			virtual unsigned int Execute(kickflip::Thread* pThread)
 			{
 				Lock();
-				ResourceList& kResuestQueue = m_pResourceManager->m_kResuestQueue;
-				if(false == kResuestQueue.empty())
+				if(false == m_kResuestQueue.empty())
 				{
-					auto ite = kResuestQueue.begin();
+					auto ite = m_kResuestQueue.begin();
+					Resource* pResource = *(ite);
 					Unlock();
 					// ロード処理
-					if(true == (*ite)->Load())
+					if(true == pResource->Load())
 					{
-						(*ite)->m_eState = Resource::COMPLETE;
+						pResource->m_eState = Resource::COMPLETE;
 						// ロード後処理
-						(*ite)->CompleteLoad();
+						pResource->CompleteLoad();
 					}else{
-						(*ite)->m_eState = Resource::UNKNOWN;
+						pResource->m_eState = Resource::UNKNOWN;
 					}
 					Lock();
-					kResuestQueue.erase(ite);
+					m_kResuestQueue.erase( m_kResuestQueue.begin());
 					Unlock();
 				}else{
-					pThread->Suspend();
+//					pThread->Suspend();
+					StopContinue();
 					Unlock();
 				}
-
-				Sleep(1);
 				return 0;
+			}
+		public:
+			void AddQueue(Resource* pResource)
+			{
+				Lock();
+				m_kResuestQueue.push_back(pResource);
+				Unlock();
 			}
 		private:
 			ResourceManager* m_pResourceManager;
+			typedef std::vector<ResourceRPtr>	ResourceList;
+			ResourceList	m_kResuestQueue;
 		};
 		bool pushBackGroundLoadQueue(Resource* pResource)
 		{
-			WakeupBackGroundLoader();
-			pResource->m_eState = Resource::LOADWAIT;
-			if(NULL == m_rpThread)
+			if(false == WakeupBackGroundLoader())
 			{
+				pResource->m_eState = Resource::UNKNOWN;
 				return false;
 			}
-			m_rpThread->Lock();
-			m_kResuestQueue.push_back(pResource);
-			m_rpThread->Unlock();
+			pResource->m_eState = Resource::LOADWAIT;
+			BackGroundLoaderRPtr rpBackGroundLoader = m_rpThread->GetThreadFunction();
+			rpBackGroundLoader->AddQueue(pResource);
 
 			return true;
 		}
@@ -130,13 +137,11 @@ namespace kickflip
 		ThreadRPtr m_rpThread;
 
 		typedef std::map<hash32, ResourceRPtr>	ResourceMap;
-		typedef std::vector<Resource*>	ResourceList;
 
 		ResourceMap		m_kResourceMap;
-		ResourceList	m_kResuestQueue;
 		
 
-		Lock m_kLock;
+//		Lock m_kLock;
 
 	public:
 		// 裏読みシステムの起動
@@ -144,18 +149,15 @@ namespace kickflip
 		{
 			if(NULL == m_rpThread)
 			{
-				m_rpThread = Thread::Create( new BackGroundLoader(this) );
+				m_rpThread = Thread::Create( new BackGroundLoader(this), true, 0 );
 				if ( NULL == m_rpThread ) return false;
+				m_rpThread->Resume();
+			}else{
+				m_rpThread->SignalStart();
 			}
-			m_rpThread->Resume();
+
 
 			return true;
-		}
-		// 裏読みシステムの一時停止
-		void SleepBackGroundLoader()
-		{
-			if(NULL == m_rpThread) return;
-			m_rpThread->Resume();
 		}
 
 		template<class T>
@@ -167,14 +169,13 @@ namespace kickflip
 		template<class T>
 		RefPtr<T> Load(const hashString& kFileName, bool bIsBackLoad = false)
 		{
-			m_kLock.Enter();
 			auto ite = m_kResourceMap.find(kFileName.hash);
 
 			if(m_kResourceMap.end() != ite)
 			{
 				// 持ってれば返す
-				m_kLock.Exit();
-				return ite->second;
+				ResourceRPtr rpResource = ite->second;
+				return rpResource;
 			}
 
 			// 読み込む
@@ -182,7 +183,6 @@ namespace kickflip
 			if(NULL == pResource)
 			{
 				// 失敗したらNULLかえす
-				m_kLock.Exit();
 				return NULL;
 			}
 
@@ -194,8 +194,6 @@ namespace kickflip
 				// 即時読み込み
 				if(false == pResource->Load())
 				{
-					delete pResource;
-					m_kLock.Exit();
 					return NULL;
 				}else{
 					pResource->m_eState = Resource::COMPLETE;
@@ -206,7 +204,6 @@ namespace kickflip
 				pushBackGroundLoadQueue(pResource);
 			}
 
-			m_kLock.Exit();
 			return pResource;
 		}
 

@@ -31,8 +31,7 @@ public:
 	{
 	public:
 		Test(char* name_, int x_, int y_)
-			: ThreadFunction(true,1)
-			, name(name_)
+			: name(name_)
 			, x(x_)
 			, y(y_)
 		{}
@@ -41,7 +40,7 @@ public:
 		}
 		virtual unsigned int Execute(kickflip::Thread* pThread)
 		{
-			//			DebugTrace("%s",name.c_str());
+			DebugTrace("%s",name.c_str());
 			return 0;
 		}
 		std::string name;
@@ -61,10 +60,17 @@ public:
 
 		virtual bool Load()
 		{
-//			D3DXLoadMeshFromX( _T("media/wall_with_pillars.x"), D3DXMESH_MANAGED, GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
-			D3DXLoadMeshFromX( m_kFileName.str.c_str(), D3DXMESH_MANAGED, Framework::Get()->GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
-			pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
-			return true;
+
+			HRESULT hRes = D3DXLoadMeshFromX( m_kFileName.str.c_str(), D3DXMESH_MANAGED, Framework::Get()->GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
+			Sleep(1000);
+			if(D3D_OK == hRes)
+			{
+				pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
+				return true;
+			}else{
+
+				return false;
+			}
 		}
 
 	public:

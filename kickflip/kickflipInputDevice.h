@@ -125,8 +125,7 @@ namespace kickflip
 		{
 		public:
 			InputStabilizer()
-				: ThreadFunction(true,0)
-				, m_uiLastUpdateTime(Time::GetRealTimeMilliSecond())
+				: m_uiLastUpdateTime(Time::GetRealTimeMilliSecond())
 				, m_uiUpdateInterval(1000/60)
 			{}
 			virtual ~InputStabilizer()
@@ -225,9 +224,6 @@ namespace kickflip
 					Unlock();
 				}
 //				DebugTrace("exec:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
-
-				Sleep(0);
-
 				return 0;
 			}
 			InputDevice::GamePad& GetPad(unsigned int idx)
@@ -254,12 +250,10 @@ namespace kickflip
 			{
 				m_kGamePad[idx].Reset();
 			}
-
-			m_rpThread = Thread::Create( new InputStabilizer(), Thread::TIME_CRITICAL );
+			m_rpThread = Thread::Create( new InputStabilizer(), true, 0, Thread::TIME_CRITICAL );
 			if ( NULL == m_rpThread ) return false;
 
 			m_rpThread->Resume();
-
 			return true;
 		}
 		void Update()
