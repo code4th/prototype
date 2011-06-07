@@ -26,10 +26,11 @@ namespace kickflip
 	{
 	public:
 		enum State{
-			UNKNOWN = -1,
-			LOADWAIT = 0,
-			LOADING,
-			COMPLETE,
+			UNKNOWN = -1,	// 状態未定義
+			LOADWAIT = 0,	// ロード待ち
+			LOADING,		// 読み込み中
+			LOADFINISH,		// 読み込み完了
+			COMPLETE,		// 準備完了
 		};
 	private:
 		friend class ResourceManager;
@@ -38,19 +39,31 @@ namespace kickflip
 		friend class ResourceManager;
 		Resource(const hashString& kFileName)
 			: m_kFileName(kFileName)
+			, m_bIsCallFinish(true)
 			, m_eState(UNKNOWN)
 		{}
 		virtual ~Resource(){}
 
-		virtual bool  Load() = 0;
-		virtual void  CompleteLoad(){}
+		virtual bool  Load() = 0;		// ロード処理
+		virtual bool  Finish(){ return true;}		// ロード完了
+
+		void Complete() { m_eState = COMPLETE; }
 
 	public:
+		bool IsLoadFinish() { return LOADFINISH == m_eState; }
 		bool IsComplete() { return COMPLETE == m_eState; }
 		const State GetState() { return m_eState; }
+	private:
+		void  callFinish()
+		{
+		 	if(false == m_bIsCallFinish) return;
+			if( true == Finish()) Complete();
+		}
+
 
 	protected:
 		hashString m_kFileName;
+		bool m_bIsCallFinish;
 	private:
 		State m_eState;
 	};
@@ -68,7 +81,8 @@ namespace kickflip
 		}
 
 		virtual ~ResourceManager(void){}
-
+		void Suspend() { m_rpThread->Suspend(); }
+		void Resume(){ m_rpThread->Resume(); }
 	private:
 		SmartPtr(BackGroundLoader);
 		class BackGroundLoader :public ThreadFunction
@@ -92,9 +106,9 @@ namespace kickflip
 					// ロード処理
 					if(true == pResource->Load())
 					{
-						pResource->m_eState = Resource::COMPLETE;
+						pResource->m_eState = Resource::LOADFINISH;
 						// ロード後処理
-						pResource->CompleteLoad();
+						pResource->callFinish();
 					}else{
 						pResource->m_eState = Resource::UNKNOWN;
 					}
@@ -194,10 +208,10 @@ namespace kickflip
 				// 即時読み込み
 				if(false == pResource->Load())
 				{
-					return NULL;
+					pResource->m_eState = Resource::UNKNOWN;
 				}else{
-					pResource->m_eState = Resource::COMPLETE;
-					pResource->CompleteLoad();
+					pResource->m_eState = Resource::LOADFINISH;
+					pResource->callFinish();
 				}
 			}else{
 				// 裏読み

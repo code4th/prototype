@@ -141,9 +141,9 @@ namespace kickflip
 
 		if( false == InitializeInputSystem() ) return false;
 
-		m_rpFrameRate = new FrameRate(m_rpGraphicDevice);
+		m_rpFrameRate = new FrameRate();
 
-		DebugFont::GetInstance().Initialize(m_rpGraphicDevice);
+		DebugFont::GetInstance().Initialize();
 		return true;
 	}
 
@@ -179,10 +179,12 @@ namespace kickflip
 	{
 		Time::Update();
 		m_rpInputDevice->Update();
+
 		LPDIRECT3DDEVICE9 pD3Dev = m_rpGraphicDevice->GetDevice();
 		if(NULL!=pD3Dev)
 		{
 			pD3Dev->Clear( 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(10,150,190), 1.0f, 0 );
+
 			pD3Dev->BeginScene();
 
 			DebugFont::GetInstance().Render();
@@ -193,8 +195,12 @@ namespace kickflip
 
 			m_rpFrameRate->Stabilize();
 
+			BeforePresent();
 			pD3Dev->Present( NULL, NULL, NULL, NULL );
+			AfterPresent();
+
 		}
+
 	}
 
 	void Framework::Finalize()

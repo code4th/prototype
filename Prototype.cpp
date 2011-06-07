@@ -36,21 +36,21 @@ void Prototype::ExecOnceBeforeUpdate()
 
 
 
-	GetGraphicShader().Load(HashString("Test1.fx"),1);
-	GetGraphicShader().Load(HashString("Test2.fx"),1);
-	GetGraphicShader().Load(HashString("Test1.fx"),2);
-	GetGraphicShader().Load(HashString("Test2.fx"),2);
+	GetGraphicShader()->Load(HashString("Test1.fx"),1);
+	GetGraphicShader()->Load(HashString("Test2.fx"),1);
+	GetGraphicShader()->Load(HashString("Test1.fx"),2);
+	GetGraphicShader()->Load(HashString("Test2.fx"),2);
 
-	GetGraphicShader().Load(HashString("Test1.fx"),1);
-	GetGraphicShader().Load(HashString("Test2.fx"),1);
-	GetGraphicShader().Load(HashString("Test1.fx"),2);
-	GetGraphicShader().Load(HashString("Test2.fx"),2);
+	GetGraphicShader()->Load(HashString("Test1.fx"),1);
+	GetGraphicShader()->Load(HashString("Test2.fx"),1);
+	GetGraphicShader()->Load(HashString("Test1.fx"),2);
+	GetGraphicShader()->Load(HashString("Test2.fx"),2);
 
 	// エフェクトの読み込み
 	LPD3DXBUFFER pErr = NULL;
 
 	HRESULT hr = D3DXCreateEffectFromFile(
-		GetGraphicDevice(),
+		GetGraphicDevice()->GetDevice(),
 		_T("media/Lambert.fx"),
 		NULL,
 		NULL,
@@ -131,16 +131,33 @@ void Prototype::ExecOnceBeforeUpdate()
 	m_rpActionController->ChangeAction(_H("Punch"));
 
 	// Xファイルオブジェクト読み込み
-/*
-	D3DXLoadMeshFromX( _T("media/wall_with_pillars.x"), D3DXMESH_MANAGED, GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
-	pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
-*/
-//	m_rpMeshObject = m_rpResouceManager->Load<MeshObject>(_H("media/wall_with_pillars.x"),true);
 	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Big_Ears.x")));
 	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Sad.x")));
 	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/LandShark.x")));
 	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/wall_with_pillars.x")));
 
+/*
+	while(1)
+	{
+		bool bIsNext = true;
+		for(auto ite = m_kMeshObjectList.begin(); m_kMeshObjectList.end()!=ite; ite++)
+		{
+			if(false == (*ite)->IsComplete())
+			{
+				bIsNext = false;
+			}
+		}
+		if(true == bIsNext) break;
+	}
+*/
+}
+void Prototype::BeforePresent()
+{
+	Framework::Get().GetGraphicDevice()->Lock();
+}
+void Prototype::AfterPresent()
+{
+	Framework::Get().GetGraphicDevice()->Unlock();
 }
 
 void Prototype::UpdateFrame()
@@ -154,19 +171,19 @@ void Prototype::UpdateFrame()
 	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond());
 	static int iSleep = 1;
 	DebugPrint(0,11,"sleep:%d",iSleep);
-	if(true == GetGamePad(0).IsPressed(InputDevice::GamePad::A))
+	if(true == GamePad(0).IsPressed(InputDevice::GamePad::A))
 	{
 		m_rpActionController->ChangeAction(_H("Punch"));
 	}
-	if(true == GetGamePad(0).IsPressed(InputDevice::GamePad::B))
+	if(true == GamePad(0).IsPressed(InputDevice::GamePad::B))
 	{
 		m_rpActionController->ChangeAction(_H("Kick"));
 	}
-	if(true == GetGamePad(0).IsOn(InputDevice::GamePad::L1))
+	if(true == GamePad(0).IsOn(InputDevice::GamePad::L1))
 	{
 		--iSleep;
 	}
-	if(true == GetGamePad(0).IsOn(InputDevice::GamePad::R1))
+	if(true == GamePad(0).IsOn(InputDevice::GamePad::R1))
 	{
 		++iSleep;
 	}
@@ -201,14 +218,13 @@ void Prototype::UpdateFrame()
 	pEffect->BeginPass(0);
 	for(auto ite = m_kMeshObjectList.begin(); m_kMeshObjectList.end()!=ite; ite++)
 	{
-		if(true == (*ite)->IsComplete())
+/*
+		if((*ite)->IsLoadFinish())
 		{
-			for(DWORD i=0; i<(*ite)->dwMatNum; i++)
-			{
-				GetGraphicDevice()->SetMaterial( &((*ite)->pMatAry[i].MatD3D) );
-				(*ite)->pMesh->DrawSubset(i);
-			}
+			(*ite)->Finish();
 		}
+*/
+		(*ite)->Draw();
 	}
 
 	pEffect->EndPass();

@@ -6,6 +6,7 @@
 
 #include "kickflipSmartPointer.h"
 #include "kickflipGraphicShader.h"
+#include "kickflipThread.h"
 
 namespace kickflip
 {
@@ -29,16 +30,17 @@ namespace kickflip
 	private:
 		LPDIRECT3D9 m_pD3D;
 		LPDIRECT3DDEVICE9 m_pD3DDev;
-		GraphicShader m_kShader;
+		GraphicShaderRPtr m_rpShader;
+		Lock m_kLock;
 
 	public:
-		LPDIRECT3DDEVICE9 GetDevice()
-		{
-			return m_pD3DDev;
-		}
 		bool Initialize(const HWND hWnd, const int width, const int height);
 
-		GraphicShader& GetShader(){ return m_kShader; }
+		GraphicShaderRPtr& GetShader(){ return m_rpShader; }
+		LPDIRECT3DDEVICE9 GetDevice() { return m_pD3DDev; }
+
+		void Lock() { m_kLock.Enter(); }
+		void Unlock() { m_kLock.Exit(); }
 
 	};
 }

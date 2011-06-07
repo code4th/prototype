@@ -6,7 +6,7 @@
 #include "kickflip/kickflipAction.h"
 #include "kickflip/kickflipResource.h"
 #include "kickflip/kickflipHashString.h"
-
+#include <cstdio>
 #include <vector>
 
 class Prototype :
@@ -18,6 +18,8 @@ public:
 
 	virtual void ExecOnceBeforeUpdate();
 	virtual void UpdateFrame();
+	virtual void BeforePresent();
+	virtual void AfterPresent();
 
 
 public:
@@ -53,24 +55,65 @@ public:
 	public:
 		MeshObject(const kickflip::hashString& kFileName)
 			: Resource(kFileName)
-		{}
+			, pMatBuf(NULL)
+			, pMesh(NULL)
+			, pMatAry(NULL)
+			, dwMatNum(0)
+			, pBuf(NULL)
+		{
+//			m_bIsCallFinish = false;
+		
+		}
 		virtual ~MeshObject()
 		{
+			if(NULL != pBuf) delete pBuf;
 		}
+		void Draw()
+		{
+			if(false == IsComplete()) return;
 
+			for(DWORD i=0; i<dwMatNum; i++)
+			{
+				Framework::Get().GetGraphicDevice()->GetDevice()->SetMaterial( &(pMatAry[i].MatD3D) );
+				pMesh->DrawSubset(i);
+			}
+		}
 		virtual bool Load()
 		{
-
-			HRESULT hRes = D3DXLoadMeshFromX( m_kFileName.str.c_str(), D3DXMESH_MANAGED, Framework::Get()->GetGraphicDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh );
-			Sleep(1000);
-			if(D3D_OK == hRes)
+			Sleep(200);
+			std::FILE* fp = NULL;
+			errno_t error = fopen_s(&fp, m_kFileName.str.c_str(),"rb");
+			if( 0 == error )
 			{
-				pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
-				return true;
-			}else{
+				fseek( fp, 0L, SEEK_END );
+				iBufSize = ftell( fp );
+				fseek( fp, 0L, SEEK_SET );
+				pBuf = std::malloc(iBufSize);
+				size_t readNum = std::fread(pBuf,iBufSize,1,fp);
+				std::fclose(fp);
 
-				return false;
+				return true;
+
 			}
+
+			return false;
+
+		}
+		virtual bool Finish()
+		{
+			if(NULL == pBuf) return false;
+			Framework::Get().GetGraphicDevice()->Lock();
+			HRESULT hRes = D3DXLoadMeshFromXInMemory(pBuf,iBufSize,D3DXMESH_MANAGED, Framework::Get().GetGraphicDevice()->GetDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh);
+			Framework::Get().GetGraphicDevice()->Unlock();
+			free(pBuf);pBuf=NULL;
+			if(D3D_OK != hRes)
+			{
+					return false;
+			}
+
+			pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
+			Complete();
+			return true;
 		}
 
 	public:
@@ -78,6 +121,8 @@ public:
 		ID3DXMesh* pMesh;
 		D3DXMATERIAL* pMatAry;
 		DWORD dwMatNum;
+		void* pBuf;
+		size_t iBufSize;
 	};
 
 	std::vector<kickflip::ThreadRPtr> m_rpThreadList;

@@ -226,7 +226,7 @@ namespace kickflip
 //				DebugTrace("exec:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
 				return 0;
 			}
-			InputDevice::GamePad& GetPad(unsigned int idx)
+			InputDevice::GamePad& GetGamePadData(unsigned int idx)
 			{
 				return m_kGamePad[idx];
 			}
@@ -262,7 +262,7 @@ namespace kickflip
 			InputStabilizerRPtr rpInputStabilizer = m_rpThread->GetThreadFunction();
 			for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
 			{
-				GamePad& kPadMapLog = rpInputStabilizer->GetPad(idx);
+				GamePad& kPadMapLog = rpInputStabilizer->GetGamePadData(idx);
 				m_kGamePad[idx] = kPadMapLog;
 
 				kPadMapLog.m_kInputStateLog.clear();
@@ -278,7 +278,7 @@ namespace kickflip
 					// 履歴がなければ自分自身が最新
 				}else{
 					// 最新の状態をスタビライザーにフィードバック
-					rpInputStabilizer->GetPad(idx).m_kInputState = kPad.m_kInputStateLog.back();
+					rpInputStabilizer->GetGamePadData(idx).m_kInputState = kPad.m_kInputStateLog.back();
 					// カレントのステータスは過去をすべて含む
 					kPad.m_kInputState.on = 0;
 					kPad.m_kInputState.pressed = 0;

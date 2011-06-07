@@ -19,12 +19,11 @@ kickflipFramework アプリケーション初期化のラッパ
 
 namespace kickflip
 {
-
 	class Framework
 	{
 	public:
 		static Framework* ms_pInstance;
-		static const Framework* Get(){ return ms_pInstance;}
+		static Framework& Get(){ return *ms_pInstance;}
 		Framework(void);
 		virtual ~Framework(void);
 
@@ -44,15 +43,16 @@ namespace kickflip
 		virtual void ExecOnceAfterUpdate(){}
 
 		virtual void UpdateFrame(){};
+		virtual void BeforePresent(){};
+		virtual void AfterPresent(){};
 
 
 		void Shutdown(){ PostMessage(m_hWnd, WM_DESTROY, 0, 0); }
-		LPDIRECT3DDEVICE9 GetGraphicDevice() const { return m_rpGraphicDevice->GetDevice(); }
-		GraphicShader& GetGraphicShader() const { return m_rpGraphicDevice->GetShader(); }
-		const InputDevice::GamePad& GetGamePad(unsigned int idx) const { return m_rpInputDevice->GetGamePad(idx); }
-		const InputDeviceRPtr& GetInputDevice() const { return m_rpInputDevice; }
+		const GraphicDeviceRPtr& GetGraphicDevice()  { return m_rpGraphicDevice; }
+		const GraphicShaderRPtr& GetGraphicShader()  { return m_rpGraphicDevice->GetShader(); }
+		const InputDevice::GamePad& GamePad(unsigned int idx)  { return m_rpInputDevice->GetGamePad(idx); }
+		const InputDeviceRPtr& GetInputDevice()  { return m_rpInputDevice; }
 
-	private:
 	private:
 		HWND m_hWnd;
 		HINSTANCE m_hInstance;
@@ -61,7 +61,6 @@ namespace kickflip
 		GraphicDeviceRPtr	m_rpGraphicDevice;
 		InputDeviceRPtr		m_rpInputDevice;
 		FrameRateRPtr		m_rpFrameRate;
-
 
 	protected:
 		bool InitializeWindow(_TCHAR* name, const unsigned int uiWidth, const unsigned int uiHeight);
