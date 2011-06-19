@@ -26,7 +26,7 @@ public:
 	ID3DXEffect* pEffect;
 
 	D3DXMATRIX View, Proj;
-	float f;
+	float f,l;
 
 	SmartPtr(Test);
 	class Test : public kickflip::ThreadFunction

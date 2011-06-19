@@ -61,7 +61,8 @@ float4 PS( VS_OUTPUT In ) : COLOR0
    float4 Out = (float4)0;
    
    //Fî•ñ‚ğCol1‚ÉŠi”[‚·‚é
-   Out = In.Col * tex2D( tex0, In.Tex );
+//   Out = In.Col * tex2D( tex0, In.Tex );
+   Out = In.Col;
       
    return Out;
 }

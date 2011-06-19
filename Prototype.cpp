@@ -153,11 +153,11 @@ void Prototype::ExecOnceBeforeUpdate()
 }
 void Prototype::BeforePresent()
 {
-	Framework::Get().GetGraphicDevice()->Lock();
+//	Framework::Get().GetGraphicDevice()->Lock();
 }
 void Prototype::AfterPresent()
 {
-	Framework::Get().GetGraphicDevice()->Unlock();
+//	Framework::Get().GetGraphicDevice()->Unlock();
 }
 
 void Prototype::UpdateFrame()
@@ -169,8 +169,8 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,4,"fps:%f(ave:%.1f)\n",Time::GetFPS(),Time::GetFPSAve());
 
 	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond());
-	static int iSleep = 1;
-	DebugPrint(0,11,"sleep:%d",iSleep);
+	l=sin(f)*50.f+800.f;
+
 	if(true == GamePad(0).IsPressed(InputDevice::GamePad::A))
 	{
 		m_rpActionController->ChangeAction(_H("Punch"));
@@ -179,27 +179,20 @@ void Prototype::UpdateFrame()
 	{
 		m_rpActionController->ChangeAction(_H("Kick"));
 	}
-	if(true == GamePad(0).IsOn(InputDevice::GamePad::L1))
-	{
-		--iSleep;
-	}
-	if(true == GamePad(0).IsOn(InputDevice::GamePad::R1))
-	{
-		++iSleep;
-	}
-	if(0>iSleep)iSleep=0;
-	Sleep(iSleep);
+
 	m_rpActionController->Update();
 
 	GetInputDevice()->DebugPrintGamePad(0,5);
 
 	// エフェクト内のワールドビュー射影変換行列を設定
 	D3DXMATRIX mat;
-	D3DXMatrixLookAtLH( &View, &D3DXVECTOR3(30*sin(f),20,-30*cos(f)), &D3DXVECTOR3(0,0,0), &D3DXVECTOR3(0,1,0) );
+	D3DXMatrixLookAtLH( &View, &D3DXVECTOR3(l*sin(f),20,-l*cos(f)), &D3DXVECTOR3(0,0,0), &D3DXVECTOR3(0,1,0) );
 	D3DXMatrixIdentity( &mat );
 	mat = mat * View * Proj;
 	//   pEffect->SetMatrix( "matWorldViewProj", &mat );
 	pEffect->SetMatrix( "m_WVP", &mat );
+	pEffect->SetVector( "m_LightDir", &D3DXVECTOR4(1,1,1,0) );
+	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(1,0,0,0));
 	/*
 	//fxファイル内で宣言している変数のハンドルを取得する
 	m_pTechnique = m_pEffect->GetTechniqueByName( "TShader" );
