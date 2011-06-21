@@ -31,6 +31,7 @@ namespace kickflip
 		void SetHInstance(HINSTANCE hInstance){ m_hInstance = hInstance; }
 		void SetCommandLine(const char* pCmdLine){ m_kCommandLine = pCmdLine; }
 
+		virtual void InitSetting();
 		// ‹N“®
 		int Boot();
 
@@ -46,7 +47,10 @@ namespace kickflip
 		virtual void BeforePresent(){};
 		virtual void AfterPresent(){};
 
-
+		void SetScreenSize( unsigned int uiWidth, unsigned int uiHeight) { m_uiWidth = uiWidth; m_uiHeight = uiHeight;}
+		void SetScreenHeight( unsigned int uiHeight) { SetScreenSize( static_cast<unsigned int>(static_cast<float>(uiHeight)*16.f/9.f),uiHeight); }
+		unsigned int GetScreenWidth() { return m_uiWidth; }
+		unsigned int GetScreenHeight() { return m_uiHeight; }
 		void Shutdown(){ PostMessage(m_hWnd, WM_DESTROY, 0, 0); }
 		const GraphicDeviceRPtr& GetGraphicDevice()  { return m_rpGraphicDevice; }
 		const GraphicShaderRPtr& GetGraphicShader()  { return m_rpGraphicDevice->GetShader(); }
@@ -61,6 +65,9 @@ namespace kickflip
 		GraphicDeviceRPtr	m_rpGraphicDevice;
 		InputDeviceRPtr		m_rpInputDevice;
 		FrameRateRPtr		m_rpFrameRate;
+
+		unsigned int m_uiWidth;
+		unsigned int m_uiHeight;
 
 	protected:
 		bool InitializeWindow(_TCHAR* name, const unsigned int uiWidth, const unsigned int uiHeight);

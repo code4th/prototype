@@ -61,8 +61,14 @@ namespace kickflip
 	{
 	}
 
+	void Framework::InitSetting()
+	{
+		SetScreenHeight(720);
+	}
+
 	int Framework::Boot()
 	{
+		InitSetting();
 		if(true == Initialize())
 		{
 //			SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS);
@@ -132,12 +138,10 @@ namespace kickflip
 
 	bool Framework::Initialize()
 	{
-		const int h = 256;
-		const int w = (int)((float)h*16.f/9.f);
 		Time::Reset();
-		if( false == InitializeWindow(_T("Prototype"), w, h ) ) return false;
+		if( false == InitializeWindow(_T("Prototype"), GetScreenWidth(), GetScreenHeight() ) ) return false;
 
-		if( false == InitializeGraphicSystem( w, h ) ) return false;
+		if( false == InitializeGraphicSystem( GetScreenWidth(), GetScreenHeight() ) ) return false;
 
 		if( false == InitializeInputSystem() ) return false;
 
@@ -183,22 +187,24 @@ namespace kickflip
 		LPDIRECT3DDEVICE9 pD3Dev = m_rpGraphicDevice->GetDevice();
 		if(NULL!=pD3Dev)
 		{
-			pD3Dev->Clear( 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(10,150,190), 1.0f, 0 );
 
-			pD3Dev->BeginScene();
+			if(D3D_OK == pD3Dev->BeginScene())
+			{
+				pD3Dev->Clear( 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(10,150,190), 1.0f, 0 );
 
-			DebugFont::GetInstance().Render();
+				DebugFont::GetInstance().Render();
 
-			UpdateFrame();
+				UpdateFrame();
 
-			pD3Dev->EndScene();
+				pD3Dev->EndScene();
 
-			m_rpFrameRate->Stabilize();
+				m_rpFrameRate->Stabilize();
+
+			}
 
 			BeforePresent();
 			pD3Dev->Present( NULL, NULL, NULL, NULL );
 			AfterPresent();
-
 		}
 
 	}

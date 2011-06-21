@@ -184,7 +184,7 @@ namespace kickflip
 					}
 				}
 
-				DebugTrace("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
+				//DebugTrace("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
 				m_uiLastUpdateTime = Time::GetRealTimeMilliSecond();
 
 				for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)

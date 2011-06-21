@@ -7,6 +7,25 @@
 Prototype theApp;
 
 using namespace kickflip;
+
+void Prototype::InitSetting()
+{
+	SetScreenHeight(256);
+}
+static void WINAPI make_noise_radius(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, const D3DXVECTOR2* pTexelSize, void* data) {
+  static unsigned int a = 0;
+  float r = 0.1f * (float)rand() / (float)RAND_MAX;
+  float t = 6.2831853f * (float)rand() / ((float)RAND_MAX + 1.0f);
+  float cp = 2.0f * (float)rand() / (float)RAND_MAX - 1.0f;
+  float sp = sqrt(1.0f - cp * cp);
+  float ct = cos(t), st = sin(t);
+
+
+  pOut->x = r * sp * ct;
+  pOut->y = r * sp * st;
+  pOut->z = r * cp;
+  pOut->w = 0;
+}
 void Prototype::ExecOnceBeforeUpdate()
 {
 
@@ -51,7 +70,8 @@ void Prototype::ExecOnceBeforeUpdate()
 
 	HRESULT hr = D3DXCreateEffectFromFile(
 		GetGraphicDevice()->GetDevice(),
-		_T("media/Lambert.fx"),
+//		_T("media/Lambert.fx"),
+		_T("media/SSAO.fx"),
 		NULL,
 		NULL,
 		D3DXSHADER_DEBUG,
@@ -69,10 +89,24 @@ void Prototype::ExecOnceBeforeUpdate()
 			pErr->Release();
 		}
 	}
+	GetGraphicDevice()->GetDevice()->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer);
+	GetGraphicDevice()->GetDevice()->CreateTexture(GetScreenWidth(), GetScreenHeight(), 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texture0, 0);
+	texture0->GetSurfaceLevel(0, &surface0);
+
+	GetGraphicDevice()->GetDevice()->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+	GetGraphicDevice()->GetDevice()->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+	GetGraphicDevice()->GetDevice()->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR);
+
+	GetGraphicDevice()->GetDevice()->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+	GetGraphicDevice()->GetDevice()->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+
+	//Create Noise
+	GetGraphicDevice()->GetDevice()->CreateTexture(64, 64, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED, &tex_noise_ssao, 0);
+	D3DXFillTexture(tex_noise_ssao, make_noise_radius, 0);
 
 
 	// ビュー変換・射影変換
-	D3DXMatrixPerspectiveFovLH( &Proj, D3DXToRadian(45), 640.0f/480.0f, 1.0f, 10000.0f);
+	D3DXMatrixPerspectiveFovLH( &Proj, D3DXToRadian(45), static_cast<float>(GetScreenWidth())/static_cast<float>(GetScreenHeight()), 1.0f, 10000.0f);
 
 
 	class Idol :public Action
@@ -153,12 +187,19 @@ void Prototype::ExecOnceBeforeUpdate()
 }
 void Prototype::BeforePresent()
 {
-//	Framework::Get().GetGraphicDevice()->Lock();
+	Framework::Get().GetGraphicDevice()->Lock();
 }
 void Prototype::AfterPresent()
 {
-//	Framework::Get().GetGraphicDevice()->Unlock();
+	Framework::Get().GetGraphicDevice()->Unlock();
 }
+
+struct d3dverts {
+  float x, y, z, w;
+  float u, v;
+  enum { fvf = D3DFVF_XYZRHW | D3DFVF_TEX1 };
+};
+
 
 void Prototype::UpdateFrame()
 {
@@ -189,22 +230,18 @@ void Prototype::UpdateFrame()
 	D3DXMatrixLookAtLH( &View, &D3DXVECTOR3(l*sin(f),20,-l*cos(f)), &D3DXVECTOR3(0,0,0), &D3DXVECTOR3(0,1,0) );
 	D3DXMatrixIdentity( &mat );
 	mat = mat * View * Proj;
-	//   pEffect->SetMatrix( "matWorldViewProj", &mat );
+
 	pEffect->SetMatrix( "m_WVP", &mat );
 	pEffect->SetVector( "m_LightDir", &D3DXVECTOR4(1,1,1,0) );
 	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(1,0,0,0));
-	/*
-	//fxファイル内で宣言している変数のハンドルを取得する
-	m_pTechnique = m_pEffect->GetTechniqueByName( "TShader" );
-	m_pWVP = m_pEffect->GetParameterByName( NULL, "m_WVP" );
-	m_pLightDir = m_pEffect->GetParameterByName( NULL, "m_LightDir" );
-	m_pAmbient = m_pEffect->GetParameterByName( NULL, "m_Ambient" );
 
-	m_pEffect->SetTechnique( m_pTechnique );
-	*/
+	LPDIRECT3DDEVICE9 d3ddevice = Framework::Get().GetGraphicDevice()->GetDevice();
+
+	d3ddevice->SetRenderTarget(0, surface0);
+    d3ddevice->Clear( 0, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
 
 	// 描画開始
-	pEffect->SetTechnique( "TShader" );
+	pEffect->SetTechnique( "RenderScene0" );
 	UINT numPass;
 	pEffect->Begin( &numPass, 0 );
 
@@ -219,9 +256,29 @@ void Prototype::UpdateFrame()
 */
 		(*ite)->Draw();
 	}
+	pEffect->EndPass();
+
+	d3ddevice->SetRenderTarget(0, backbuffer);
+    d3ddevice->Clear( 0, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
+    d3ddevice->SetTexture(0, tex_noise_ssao );
+    d3ddevice->SetTexture(1, texture0 );
+
+	pEffect->BeginPass(1);
+	d3ddevice->SetFVF( d3dverts::fvf  );
+	const d3dverts quadverts[4] = {
+		{ -0.5f+0.f,				-0.5f+      0.f, 0.0f, 1.0f, 0.0f, 0.0f},
+		{ -0.5f+GetScreenWidth(),	-0.5f+      0.f, 0.0f, 1.0f, 1.0f, 0.0f},
+		{ -0.5f+0.f,				-0.5f+GetScreenHeight(), 0.0f, 1.0f, 0.0f, 1.0f},
+		{ -0.5f+GetScreenWidth(),	-0.5f+GetScreenHeight(), 0.0f, 1.0f, 1.0f, 1.0f},
+	};
+
+    d3ddevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quadverts, sizeof(d3dverts));
 
 	pEffect->EndPass();
+
 	pEffect->End();
+
+
 
 
 }

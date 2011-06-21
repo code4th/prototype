@@ -16,6 +16,8 @@ public:
 	Prototype(void){}
 	virtual ~Prototype(void){}
 
+	virtual void InitSetting();
+
 	virtual void ExecOnceBeforeUpdate();
 	virtual void UpdateFrame();
 	virtual void BeforePresent();
@@ -131,6 +133,12 @@ public:
 	kickflip::ActionControllerRPtr m_rpActionController;
 	kickflip::ResourceManagerRPtr m_rpResouceManager;
 	std::vector<MeshObjectRPtr> m_kMeshObjectList;
+
+	LPDIRECT3DTEXTURE9       texture0;
+	LPDIRECT3DSURFACE9       surface0;
+	LPDIRECT3DSURFACE9       backbuffer;
+	LPDIRECT3DTEXTURE9       tex_noise_ssao;
+
 
 };
 
