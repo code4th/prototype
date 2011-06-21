@@ -14,7 +14,7 @@ namespace kickflip
 {
 #define DebugTrace( str, ... ) \
 	{ \
-		TCHAR c[2048]; \
+		TCHAR c[2048*10]; \
 		_stprintf_s( c, str, __VA_ARGS__ ); \
 		OutputDebugString( c ); \
 	}

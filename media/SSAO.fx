@@ -205,12 +205,10 @@ SSPS_OUTPUT RenderScenePS0(
 		// radDは深度値の偏りの補正。
 //		ray = radD * reflect(pSphere[i], fres);
 //		ray = radD * fres*pSphere[i];
-		ray = radD * pSphere[i];
-/*
-		float3 fres = tex2D(rayMap, float2(i,i)*offset)*2.f;
-		fres-=1.f;
+//		ray = radD * pSphere[i];
+		float3 fres = tex2D(rayMap, float2(float(i)/16.f,0)).xyz*2.f-1.f;
 		ray = radD * fres;
-*/
+
 		// if the ray is outside the hemisphere then change direction
 		// 光線が半球の外(反対)なら反転する
 		// 反対だとdotが負値を返すのでsignが-1を返す
