@@ -15,20 +15,20 @@ void Prototype::InitSetting()
 static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, const D3DXVECTOR2* pTexelSize, void* data)
 {
 /*
-  float r = 1.0f * (float)rand() / (float)RAND_MAX;
-  float t = 6.2831853f * (float)rand() / ((float)RAND_MAX + 1.0f);
-  float cp = 2.0f * (float)rand() / (float)RAND_MAX - 1.0f;
-  float sp = sqrt(1.0f - cp * cp);
-  float ct = cos(t), st = sin(t);
+	float r = 1.0f * (float)rand() / (float)RAND_MAX;
+	float t = 6.2831853f * (float)rand() / ((float)RAND_MAX + 1.0f);
+	float cp = 2.0f * (float)rand() / (float)RAND_MAX - 1.0f;
+	float sp = sqrt(1.0f - cp * cp);
+	float ct = cos(t), st = sin(t);
 
-  pOut->x = abs(r * sp * ct);
-  pOut->y = abs(r * sp * st);
-  pOut->z = abs(r * cp);
+	pOut->x = abs(r * sp * ct);
+	pOut->y = abs(r * sp * st);
+	pOut->z = abs(r * cp);
 
 // DebugTrace("%f,%f,%f\n",pOut->x,pOut->y,pOut->z);
   pOut->w = 0;
 */
-	static int i=0;
+  static int i=0;
 
 	D3DXVECTOR3 vec;
 	switch(i%16)
@@ -58,6 +58,7 @@ static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, c
 	pOut->w = 0.f;
 
 	++i;
+
 }
 void Prototype::ExecOnceBeforeUpdate()
 {
