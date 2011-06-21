@@ -137,7 +137,7 @@ public:
 	LPDIRECT3DTEXTURE9       texture0;
 	LPDIRECT3DSURFACE9       surface0;
 	LPDIRECT3DSURFACE9       backbuffer;
-	LPDIRECT3DTEXTURE9       tex_noise_ssao;
+	LPDIRECT3DTEXTURE9       rayMap;
 
 
 };

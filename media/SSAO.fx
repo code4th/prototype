@@ -14,23 +14,29 @@ float4 m_LightDir;
 
 //環境光に対するマテリアル。0.0f～1.0fの値を持ち、1.0fのとき最も強くなる。
 float4 m_Ambient = 0.0f;
-
+/*
+uniform float totStrength = 1.38;
+uniform float strength = 0.07;
+uniform float offset = 18.0;
+uniform float falloff = 0.000002;
+uniform float rad = 0.006;
+*/
 
 float totStrength = 1.38;
-float strength = 0.07;
+float strength = 0.0007;
 float offset = 18.0;
 float falloff = 0.000002;
-float rad = 0.006;
+float rad = 0.03;
 
 #define SAMPLES 16 // 10 is good
-const float invSamples = 1.0/16.0;
+const float invSamples = 1.0/SAMPLES;
 
-sampler rnm : register(s0);
+sampler rayMap : register(s0);
 sampler normalMap : register(s1);
 
 // 単位球内のランダムなベクトル
 #if SAMPLES == 16
-float3 pSphere[16] = {
+const float3 pSphere[16] = {
 	float3(0.53812504, 0.18565957, -0.43192),
 	float3(0.13790712, 0.24864247, 0.44301823),
 	float3(0.33715037, 0.56794053, -0.005789503),
@@ -124,8 +130,9 @@ VS_OUTPUT VS( float4 Pos     : POSITION,   //頂点の座標
    Out.Col = max( m_Ambient, dot(N, L) );
    Out.depth = Out.Pos;
    
-   float4 normal = mul( Normal, m_WVP );
-   Out.normal = normalize(normal);
+//   Out.normal = mul( Normal, m_WVP );
+   Out.normal = Normal;
+   Out.normal = normalize(Out.normal);
    return Out;
 }
 
@@ -149,24 +156,10 @@ float4 PS( VS_OUTPUT In ): COLOR0
 //--------------------------------------------------------------------------------------
 // Pixel shader output structure
 //--------------------------------------------------------------------------------------
-struct SSVS_OUTPUT
-{
-    float4 Position	: POSITION;
-//    float2 uv  		: TEXCOORD0;
-};
 struct SSPS_OUTPUT
 {
     float4 RGBColor	: COLOR0;  // Pixel color
 };
-SSVS_OUTPUT RenderSceneVS( float4 vPos : POSITION )
-{
-    SSVS_OUTPUT Output;
-    Output.Position = vPos;
- //   Output.uv.x = (vPos.x + 1.0f) * 0.5f;
- //   Output.uv.y = 1.0f - (vPos.y + 1.0f) * 0.5f;
-
-    return Output;
-}
 //--------------------------------------------------------------------------------------
 // ピクセルシェーダ メイン http://www.gamerendering.com/2009/01/14/ssao/ の移植(微修正)
 //--------------------------------------------------------------------------------------
@@ -176,11 +169,14 @@ SSPS_OUTPUT RenderScenePS0(
 {
     SSPS_OUTPUT Output;
 
+
 	// grab a normal for reflecting the sample rays later on
 	// 後でサンプル光線を反射させるための法線を
 	// rnm :ランダムノーマルマップのサンプラ。ランダムノーマルマップはサンプリングをランダムにするために使う。
 	// offset : ランダムノーマルマップが描画サイズより小さいことによって同じピクセルがサンプルされるのを防ぐ。
-	float3 fres = normalize((tex2D(rnm, uv*offset).xyz*2.0) - 1.0f);
+//	float3 fres = normalize((tex2D(rayMap, uv*offset).xyz*2.0) - 1.0f);
+//	float3 fres = tex2D(rayMap, uv*offset)*2.f;
+//	fres-=1.f;
 
 	// RGBに法線が、aに0～1のデプスが入っている
 	float4 currentPixelSample = tex2D(normalMap, uv);
@@ -190,7 +186,6 @@ SSPS_OUTPUT RenderScenePS0(
 	// get the normal of current fragment
 	// 現在フラグメントの法線
 	float3 norm = currentPixelSample.xyz * 2.0f - 1.0f;
-
 
 	float bl = 0.0;
 	// adjust for the depth ( not shure if this is good..)
@@ -208,8 +203,14 @@ SSPS_OUTPUT RenderScenePS0(
 		// テクスチャから取得した(半径1.0の球内に収まったランダムな)ベクトルに反射させる
 		// なんでfresをそのままrayとして使わないんだろ。長さもバラけさせたいからかな。(fresは正規化されてる)
 		// radDは深度値の偏りの補正。
-		ray = radD * reflect(pSphere[i], fres);
-
+//		ray = radD * reflect(pSphere[i], fres);
+//		ray = radD * fres*pSphere[i];
+		ray = radD * pSphere[i];
+/*
+		float3 fres = tex2D(rayMap, float2(i,i)*offset)*2.f;
+		fres-=1.f;
+		ray = radD * fres;
+*/
 		// if the ray is outside the hemisphere then change direction
 		// 光線が半球の外(反対)なら反転する
 		// 反対だとdotが負値を返すのでsignが-1を返す
@@ -227,7 +228,6 @@ SSPS_OUTPUT RenderScenePS0(
 		// 正：遮蔽フラグメントは現在のフラグメントより前 →遮蔽されてる
 		// 負：遮蔽フラグメントは現在のフラグメントより奥 →遮蔽されてない
 		depthDifference = currentPixelDepth - occluderFragment.a;
-
 		// calculate the difference between the normals as a weight
 		// 遮蔽フラグメントと現在フラグメントでの法線の角度の差を計算
 		// 同方向なら1、反対なら0
@@ -247,6 +247,7 @@ SSPS_OUTPUT RenderScenePS0(
 		//
 		//    前後関係での遮蔽有無         角度による遮蔽           前後関係での遮蔽変化をソフトに
 		bl += step(falloff, depthDifference) * normDiff * (1.0 - smoothstep(falloff, strength, depthDifference));
+
 	}
 
 	// output the result
@@ -269,7 +270,6 @@ technique RenderScene0
     }
     pass P1
     {
-	    VertexShader = compile vs_3_0 RenderSceneVS();
         PixelShader  = compile ps_3_0 RenderScenePS0();
     }
 }
