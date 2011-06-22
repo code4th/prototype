@@ -14,6 +14,70 @@ float4 m_LightDir;
 
 //環境光に対するマテリアル。0.0f～1.0fの値を持ち、1.0fのとき最も強くなる。
 float4 m_Ambient = 0.0f;
+bool m_bIsFlag;
+
+//****************************************************************
+//バーテックスシェーダー
+//****************************************************************
+//バーテックスシェーダーからピクセルシェーダーへ渡すための構造体
+struct VS_OUTPUT
+{
+   float4 Pos   : POSITION;     //頂点の座標
+   float4 Col   : COLOR0;       //頂点カラー
+   float4 depth : COLOR1 ;
+   float3 normal : COLOR2 ;
+//   float2 Tex   : TEXCOORD0;    //テクセル座標
+};
+//バーテックスシェーダー
+VS_OUTPUT VS( float4 Pos     : POSITION,   //頂点の座標
+              float4 Normal  : NORMAL,     //法線ベクトル
+              float2 Tex     : TEXCOORD0 ) //テクセル
+{
+   VS_OUTPUT Out = (VS_OUTPUT)0;
+   
+   //頂点の座標を行列変換する
+   Out.Pos    = mul( Pos, m_WVP );
+   
+   //テクセルはそのまま格納する
+//   Out.Tex    = Tex;
+   
+   //照明を逆方向にする。(注意１)
+   float3 L = -normalize( m_LightDir.xyz );
+   
+   //法線ベクトル。
+   float3 N = normalize( Normal.xyz );
+
+   //照明と法線からdot関数により、内積を計算する。またmax関数により頂点カラーの最小値を環境光に抑えるように設定する。(注意２)
+   Out.Col = max( m_Ambient, dot(N, L) );
+   Out.depth = Out.Pos;
+   
+//   Out.normal = mul( Normal, m_WVP );
+   Out.normal = Normal.xyz;
+   Out.normal = normalize(Out.normal);
+   return Out;
+}
+
+//****************************************************************
+//ピクセルシェーダー
+//****************************************************************
+struct SP_OUTPUT
+{
+   float4 Color			: COLOR0;	// カラー
+   float4 NormalDepth   : COLOR1;	// 法線と深度
+};
+SP_OUTPUT PS( VS_OUTPUT In ): COLOR0
+{  
+   SP_OUTPUT Out = (SP_OUTPUT)0;
+   
+   //色情報をCol1に格納する
+//   Out = In.Col * tex2D( tex0, In.Tex );
+	Out.Color = In.Col;
+	Out.NormalDepth.xyz = In.normal;
+	Out.NormalDepth.w = In.depth.z/In.depth.w;
+	return Out;
+}
+
+
 /*
 uniform float totStrength = 1.38;
 uniform float strength = 0.07;
@@ -31,8 +95,6 @@ float rad = 0.03;
 #define SAMPLES 16 // 10 is good
 const float invSamples = 1.0/SAMPLES;
 
-sampler rayMap : register(s0);
-sampler normalMap : register(s1);
 
 // 単位球内のランダムなベクトル
 #if SAMPLES == 16
@@ -95,63 +157,24 @@ const float3 pSphere[10] = {
 };
 #endif
 
-//****************************************************************
-//バーテックスシェーダー
-//****************************************************************
-//バーテックスシェーダーからピクセルシェーダーへ渡すための構造体
-struct VS_OUTPUT
+sampler rayMap : register(s0) = sampler_state 
+{ 
+    MipFilter = NONE;
+    MinFilter = POINT;
+    MagFilter = POINT;
+}; 
+sampler normalMap : register(s1) = sampler_state
 {
-   float4 Pos   : POSITION;     //頂点の座標
-   float4 Col   : COLOR0;       //頂点カラー
-   float4 depth : COLOR1 ;
-   float3 normal : COLOR2 ;
-//   float2 Tex   : TEXCOORD0;    //テクセル座標
+    MipFilter = NONE;
+    MinFilter = LINEAR;
+    MagFilter = LINEAR;
 };
-//バーテックスシェーダー
-VS_OUTPUT VS( float4 Pos     : POSITION,   //頂点の座標
-              float4 Normal  : NORMAL,     //法線ベクトル
-              float2 Tex     : TEXCOORD0 ) //テクセル
+sampler colorMap : register(s2) = sampler_state
 {
-   VS_OUTPUT Out = (VS_OUTPUT)0;
-   
-   //頂点の座標を行列変換する
-   Out.Pos    = mul( Pos, m_WVP );
-   
-   //テクセルはそのまま格納する
-//   Out.Tex    = Tex;
-   
-   //照明を逆方向にする。(注意１)
-   float3 L = -normalize( m_LightDir.xyz );
-   
-   //法線ベクトル。
-   float3 N = normalize( Normal.xyz );
-
-   //照明と法線からdot関数により、内積を計算する。またmax関数により頂点カラーの最小値を環境光に抑えるように設定する。(注意２)
-   Out.Col = max( m_Ambient, dot(N, L) );
-   Out.depth = Out.Pos;
-   
-//   Out.normal = mul( Normal, m_WVP );
-   Out.normal = Normal;
-   Out.normal = normalize(Out.normal);
-   return Out;
-}
-
-//****************************************************************
-//ピクセルシェーダー
-//****************************************************************
-float4 PS( VS_OUTPUT In ): COLOR0
-{  
-   float4 Out = (float4)0;
-   
-   //色情報をCol1に格納する
-//   Out = In.Col * tex2D( tex0, In.Tex );
-//   Out = In.Col;
-//   Out.xyz = In.normal;
-
-	Out = float4(In.normal.x,In.normal.y,In.normal.z,In.depth.z/In.depth.w);
-   return Out;
-}
-
+    MipFilter = NONE;
+    MinFilter = LINEAR;
+    MagFilter = LINEAR;
+};
 
 //--------------------------------------------------------------------------------------
 // Pixel shader output structure
@@ -169,91 +192,94 @@ SSPS_OUTPUT RenderScenePS0(
 {
     SSPS_OUTPUT Output;
 
-
-	// grab a normal for reflecting the sample rays later on
-	// 後でサンプル光線を反射させるための法線を
-	// rnm :ランダムノーマルマップのサンプラ。ランダムノーマルマップはサンプリングをランダムにするために使う。
-	// offset : ランダムノーマルマップが描画サイズより小さいことによって同じピクセルがサンプルされるのを防ぐ。
-//	float3 fres = normalize((tex2D(rayMap, uv*offset).xyz*2.0) - 1.0f);
-//	float3 fres = tex2D(rayMap, uv*offset)*2.f;
-//	fres-=1.f;
-
-	// RGBに法線が、aに0～1のデプスが入っている
-	float4 currentPixelSample = tex2D(normalMap, uv);
-
-	float currentPixelDepth = currentPixelSample.a;
-
-	// get the normal of current fragment
-	// 現在フラグメントの法線
-	float3 norm = currentPixelSample.xyz * 2.0f - 1.0f;
-
-	float bl = 0.0;
-	// adjust for the depth ( not shure if this is good..)
-	// サンプリング半径。手前ほど周りを見る距離を大きくする(パースの補正)
-	float radD = rad / currentPixelDepth;
-	//float radD = rad;
-
-	float3 ray, occNorm;
-	float2 se;
-	float occluderDepth, depthDifference, normDiff;
-
-	for(int i=0; i<SAMPLES;++i)
+	if(m_bIsFlag)
 	{
-		// get a vector (randomized inside of a sphere with radius 1.0) from a texture and reflect it
-		// テクスチャから取得した(半径1.0の球内に収まったランダムな)ベクトルに反射させる
-		// なんでfresをそのままrayとして使わないんだろ。長さもバラけさせたいからかな。(fresは正規化されてる)
-		// radDは深度値の偏りの補正。
-//		ray = radD * reflect(pSphere[i], fres);
-//		ray = radD * fres*pSphere[i];
-//		ray = radD * pSphere[i];
-		float3 fres = tex2D(rayMap, float2(float(i)/16.f,0)).xyz*2.f-1.f;
-		ray = radD * fres;
 
-		// if the ray is outside the hemisphere then change direction
-		// 光線が半球の外(反対)なら反転する
-		// 反対だとdotが負値を返すのでsignが-1を返す
-		se = uv + sign(dot(ray,norm)) * ray * float2(1.0f, -1.0f);
+		// grab a normal for reflecting the sample rays later on
+		// 後でサンプル光線を反射させるための法線を
+		// rnm :ランダムノーマルマップのサンプラ。ランダムノーマルマップはサンプリングをランダムにするために使う。
+		// offset : ランダムノーマルマップが描画サイズより小さいことによって同じピクセルがサンプルされるのを防ぐ。
 
-		// get the depth of the occluder fragment
-		// 遮蔽するフラグメントを取得
-		float4 occluderFragment = tex2D(normalMap, se.xy);
+		// RGBに法線が、aに0～1のデプスが入っている
+		float4 currentPixelSample = tex2D(normalMap, uv);
 
-		// get the normal of the occluder fragment
-		// 遮蔽するフラグメントの法線を取得
-		occNorm = occluderFragment.xyz * 2.0f - 1.0f;
+		float currentPixelDepth = currentPixelSample.a;
 
-		// if depthDifference is negative = occluder is behind current fragment
-		// 正：遮蔽フラグメントは現在のフラグメントより前 →遮蔽されてる
-		// 負：遮蔽フラグメントは現在のフラグメントより奥 →遮蔽されてない
-		depthDifference = currentPixelDepth - occluderFragment.a;
-		// calculate the difference between the normals as a weight
-		// 遮蔽フラグメントと現在フラグメントでの法線の角度の差を計算
-		// 同方向なら1、反対なら0
-		// 同方向を向いていたら遮蔽されていないはず、角度がおおきければ遮蔽されているはず、ということ
-		normDiff = (1.0 - dot(normalize(occNorm), normalize(norm)));
+		// get the normal of current fragment
+		// 現在フラグメントの法線
+		float3 norm = currentPixelSample.xyz * 2.0f - 1.0f;
 
-		// the falloff equation, starts at falloff and is kind of 1/x^2 falling
-		// 減衰式。1/x^2 な感じで減衰する。
-		// step : step(edge, x) 0.0 if x < edge, else 1.0
-		//        depthDifference が falloff より小さければ 0、そうでなければ 1。
-		//        →ある程度以上手前にあれば遮蔽
-		// smoothstep : depthDifference が falloff 以下なら 0、strength 以上なら 1、そうでなければ間を補間
-		//        →1.0-smoothstep(...) で、
-		//          遮蔽フラグメントが現在フラグメントより少し前の場合、ソフトに暗くする。
-		//          また、遮蔽フラグメントが手前過ぎる場合は遮蔽と見なさない。
-		//          (falloffはstepの方で前後関係による遮蔽判定により使われているので、smoothstepの方では補間の開始位置という程度の意味)
-		//
-		//    前後関係での遮蔽有無         角度による遮蔽           前後関係での遮蔽変化をソフトに
-		bl += step(falloff, depthDifference) * normDiff * (1.0 - smoothstep(falloff, strength, depthDifference));
+		float bl = 0.0;
+		// adjust for the depth ( not shure if this is good..)
+		// サンプリング半径。手前ほど周りを見る距離を大きくする(パースの補正)
+		float radD = rad / currentPixelDepth;
+		//float radD = rad;
 
+		float3 ray, occNorm;
+		float2 se;
+		float occluderDepth, depthDifference, normDiff;
+
+		for(int i=0; i<SAMPLES;++i)
+		{
+			// get a vector (randomized inside of a sphere with radius 1.0) from a texture and reflect it
+			// テクスチャから取得した(半径1.0の球内に収まったランダムな)ベクトルに反射させる
+			// なんでfresをそのままrayとして使わないんだろ。長さもバラけさせたいからかな。(fresは正規化されてる)
+			// radDは深度値の偏りの補正。
+	//		ray = radD * reflect(pSphere[i], fres);
+	//		ray = radD * fres*pSphere[i];
+	//		ray = radD * pSphere[i];
+			float3 fres = tex2D(rayMap, float2(float(i)/16.f,0)).xyz*2.f-1.f;
+			ray = radD * fres;
+
+			// if the ray is outside the hemisphere then change direction
+			// 光線が半球の外(反対)なら反転する
+			// 反対だとdotが負値を返すのでsignが-1を返す
+			se = uv + sign(dot(ray,norm)) * ray * float2(1.0f, -1.0f);
+
+			// get the depth of the occluder fragment
+			// 遮蔽するフラグメントを取得
+			float4 occluderFragment = tex2D(normalMap, se.xy);
+
+			// get the normal of the occluder fragment
+			// 遮蔽するフラグメントの法線を取得
+			occNorm = occluderFragment.xyz * 2.0f - 1.0f;
+
+			// if depthDifference is negative = occluder is behind current fragment
+			// 正：遮蔽フラグメントは現在のフラグメントより前 →遮蔽されてる
+			// 負：遮蔽フラグメントは現在のフラグメントより奥 →遮蔽されてない
+			depthDifference = currentPixelDepth - occluderFragment.a;
+			// calculate the difference between the normals as a weight
+			// 遮蔽フラグメントと現在フラグメントでの法線の角度の差を計算
+			// 同方向なら1、反対なら0
+			// 同方向を向いていたら遮蔽されていないはず、角度がおおきければ遮蔽されているはず、ということ
+			normDiff = (1.0 - dot(normalize(occNorm), normalize(norm)));
+
+			// the falloff equation, starts at falloff and is kind of 1/x^2 falling
+			// 減衰式。1/x^2 な感じで減衰する。
+			// step : step(edge, x) 0.0 if x < edge, else 1.0
+			//        depthDifference が falloff より小さければ 0、そうでなければ 1。
+			//        →ある程度以上手前にあれば遮蔽
+			// smoothstep : depthDifference が falloff 以下なら 0、strength 以上なら 1、そうでなければ間を補間
+			//        →1.0-smoothstep(...) で、
+			//          遮蔽フラグメントが現在フラグメントより少し前の場合、ソフトに暗くする。
+			//          また、遮蔽フラグメントが手前過ぎる場合は遮蔽と見なさない。
+			//          (falloffはstepの方で前後関係による遮蔽判定により使われているので、smoothstepの方では補間の開始位置という程度の意味)
+			//
+			//    前後関係での遮蔽有無         角度による遮蔽           前後関係での遮蔽変化をソフトに
+			bl += step(falloff, depthDifference) * normDiff * (1.0 - smoothstep(falloff, strength, depthDifference));
+		
+		}
+
+		// output the result
+		// AO項の計算。遮蔽されているほどblが大きいので、暗くなる。
+		float ao = 1.0 - totStrength * bl * invSamples;
+		Output.RGBColor = tex2D(colorMap, uv)*ao;
+		return Output;
 	}
-
-	// output the result
-	// AO項の計算。遮蔽されているほどblが大きいので、暗くなる。
-	float ao = 1.0 - totStrength * bl * invSamples;
-	Output.RGBColor = float4(ao, 0.0f, 0.0f, 1.0f);
-
+	Output.RGBColor = tex2D(colorMap, uv);
 	return Output;
+
+
 }
 
 //--------------------------------------------------------------------------------------

@@ -123,16 +123,13 @@ void Prototype::ExecOnceBeforeUpdate()
 			pErr->Release();
 		}
 	}
+	// バックバッファを覚えとく
 	GetGraphicDevice()->GetDevice()->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer);
-	GetGraphicDevice()->GetDevice()->CreateTexture(GetScreenWidth(), GetScreenHeight(), 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texture0, 0);
-	texture0->GetSurfaceLevel(0, &surface0);
 
-	GetGraphicDevice()->GetDevice()->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-	GetGraphicDevice()->GetDevice()->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-	GetGraphicDevice()->GetDevice()->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR);
-
-	GetGraphicDevice()->GetDevice()->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-	GetGraphicDevice()->GetDevice()->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+	GetGraphicDevice()->GetDevice()->CreateTexture(GetScreenWidth(), GetScreenHeight(), 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texColor, 0);
+	texColor->GetSurfaceLevel(0, &surColor);
+	GetGraphicDevice()->GetDevice()->CreateTexture(GetScreenWidth(), GetScreenHeight(), 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texNormalDepth, 0);
+	texNormalDepth->GetSurfaceLevel(0, &surNormalDepth);
 
 	//Create Noise
 	GetGraphicDevice()->GetDevice()->CreateTexture(16, 16, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED, &rayMap, 0);
@@ -203,7 +200,7 @@ void Prototype::ExecOnceBeforeUpdate()
 //	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Sad.x")));
 	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/LandShark.x")));
 	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/wall_with_pillars.x")));
-
+	m_bIsFlag = TRUE;
 /*
 	while(1)
 	{
@@ -255,6 +252,9 @@ void Prototype::UpdateFrame()
 		m_rpActionController->ChangeAction(_H("Kick"));
 	}
 
+	if(true == GamePad(0).IsPressed(InputDevice::GamePad::X))
+		m_bIsFlag=!m_bIsFlag;
+
 	m_rpActionController->Update();
 
 	GetInputDevice()->DebugPrintGamePad(0,5);
@@ -267,11 +267,13 @@ void Prototype::UpdateFrame()
 
 	pEffect->SetMatrix( "m_WVP", &mat );
 	pEffect->SetVector( "m_LightDir", &D3DXVECTOR4(1,1,1,0) );
-	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(1,0,0,0));
+	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(0.5,0.5,0.5,0));
+	pEffect->SetBool( "m_bIsFlag" , m_bIsFlag);
 
 	LPDIRECT3DDEVICE9 d3ddevice = Framework::Get().GetGraphicDevice()->GetDevice();
 
-	d3ddevice->SetRenderTarget(0, surface0);
+	d3ddevice->SetRenderTarget(0, surColor);
+	d3ddevice->SetRenderTarget(1, surNormalDepth);
     d3ddevice->Clear( 0, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
 
 	// 描画開始
@@ -293,9 +295,11 @@ void Prototype::UpdateFrame()
 	pEffect->EndPass();
 
 	d3ddevice->SetRenderTarget(0, backbuffer);
+	d3ddevice->SetRenderTarget(1, NULL);
     d3ddevice->Clear( 0, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
     d3ddevice->SetTexture(0, rayMap );
-    d3ddevice->SetTexture(1, texture0 );
+    d3ddevice->SetTexture(1, texNormalDepth );
+    d3ddevice->SetTexture(2, texColor );
 
 	pEffect->BeginPass(1);
 	d3ddevice->SetFVF( d3dverts::fvf  );

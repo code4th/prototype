@@ -192,8 +192,8 @@ namespace kickflip
 					GamePad& kPad = m_kGamePad[idx];
 					XINPUT_STATE	kInputState;
 					const bool		bIsLastConnect = kPad.m_bIsConnect;
-//					kPad.m_bIsConnect = ( XInputGetState(idx,&kInputState) == ERROR_SUCCESS ) ? true : false;
-					kPad.m_bIsConnect = ( DebugXInputGetState(idx,&kInputState) == ERROR_SUCCESS ) ? true : false;
+					kPad.m_bIsConnect = ( XInputGetState(idx,&kInputState) == ERROR_SUCCESS ) ? true : false;
+//					kPad.m_bIsConnect = ( DebugXInputGetState(idx,&kInputState) == ERROR_SUCCESS ) ? true : false;
 
 					if( false == kPad.m_bIsConnect ) continue;
 

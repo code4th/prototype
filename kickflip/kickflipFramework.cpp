@@ -192,9 +192,10 @@ namespace kickflip
 			{
 				pD3Dev->Clear( 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(10,150,190), 1.0f, 0 );
 
-				DebugFont::GetInstance().Render();
 
 				UpdateFrame();
+
+				DebugFont::GetInstance().Render();
 
 				pD3Dev->EndScene();
 

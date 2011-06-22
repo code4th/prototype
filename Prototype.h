@@ -134,11 +134,16 @@ public:
 	kickflip::ResourceManagerRPtr m_rpResouceManager;
 	std::vector<MeshObjectRPtr> m_kMeshObjectList;
 
-	LPDIRECT3DTEXTURE9       texture0;
-	LPDIRECT3DSURFACE9       surface0;
 	LPDIRECT3DSURFACE9       backbuffer;
+
+	LPDIRECT3DTEXTURE9       texColor;
+	LPDIRECT3DSURFACE9       surColor;
+	LPDIRECT3DTEXTURE9       texNormalDepth;
+	LPDIRECT3DSURFACE9       surNormalDepth;
+
 	LPDIRECT3DTEXTURE9       rayMap;
 
+	BOOL m_bIsFlag;
 
 };
 
