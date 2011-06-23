@@ -57,7 +57,6 @@ public:
 	public:
 		MeshObject(const kickflip::hashString& kFileName)
 			: Resource(kFileName)
-			, pMatBuf(NULL)
 			, pMesh(NULL)
 			, pMatAry(NULL)
 			, dwMatNum(0)
@@ -76,7 +75,8 @@ public:
 
 			for(DWORD i=0; i<dwMatNum; i++)
 			{
-				Framework::Get().GetGraphicDevice()->GetDevice()->SetMaterial( &(pMatAry[i].MatD3D) );
+				Framework::Get().GetGraphicDevice()->GetDevice()->SetMaterial( &pMatAry[i] );
+				Framework::Get().GetGraphicDevice()->GetDevice()->SetTexture( 0, ppTextureAry[i] );
 				pMesh->DrawSubset(i);
 			}
 		}
@@ -103,6 +103,7 @@ public:
 		}
 		virtual bool Finish()
 		{
+/*
 			if(NULL == pBuf) return false;
 			Framework::Get().GetGraphicDevice()->Lock();
 			HRESULT hRes = D3DXLoadMeshFromXInMemory(pBuf,iBufSize,D3DXMESH_MANAGED, Framework::Get().GetGraphicDevice()->GetDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh);
@@ -115,13 +116,52 @@ public:
 
 			pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
 			Complete();
+*/
+			if(NULL == pBuf) return false;
+
+			LPDIRECT3DDEVICE9 d3dev = Framework::Get().GetGraphicDevice()->GetDevice();
+
+			Framework::Get().GetGraphicDevice()->Lock();
+			LPD3DXBUFFER pMatBuf;  // D3DBufferオブジェクトへのポインタ
+
+			HRESULT hRes = D3DXLoadMeshFromXInMemory(pBuf,iBufSize,D3DXMESH_MANAGED, d3dev, NULL, &pMatBuf, NULL, &dwMatNum, &pMesh);
+
+			// D3DXMATERIAL構造体の配列へのポインタを取得
+			D3DXMATERIAL* d3dxmatrs = 
+				(D3DXMATERIAL*)pMatBuf->GetBufferPointer(); 
+
+			// LPDIRECT3DTEXTURE9型の配列を確保
+			ppTextureAry = 
+				(LPDIRECT3DTEXTURE9*)malloc(sizeof(LPDIRECT3DTEXTURE9) * dwMatNum);
+			// D3DMATERIAL9構造体の配列を確保
+			pMatAry = (D3DMATERIAL9*)malloc(sizeof(D3DMATERIAL9) * dwMatNum);
+			for (int i = 0; i < (int)dwMatNum; i++)
+			{
+				pMatAry[i] = d3dxmatrs[i].MatD3D; // 材質の情報をコピー
+
+				// D3DXCreateTextureFromFile関数が失敗した場合
+				std::string fileNameTexture("media/");
+				fileNameTexture+=d3dxmatrs[i].pTextureFilename;
+				if (D3DXCreateTextureFromFile(
+					d3dev, 
+					fileNameTexture.c_str(), 
+					&ppTextureAry[i] 
+				) != S_OK ) // テクスチャ画像のファイル名からテクスチャオブジェクトを作成
+					ppTextureAry[i] = NULL; // D3DXCreateTextureFromFile関数が失敗したらテクスチャは無効
+
+			}
+			Framework::Get().GetGraphicDevice()->Unlock();
+			free(pBuf);pBuf=NULL;
+
+			pMatBuf->Release(); // D3DXBUFFERオブジェクトを解放
+			Complete();
 			return true;
 		}
 
 	public:
-		ID3DXBuffer* pMatBuf;
 		ID3DXMesh* pMesh;
-		D3DXMATERIAL* pMatAry;
+		D3DMATERIAL9* pMatAry;
+		LPDIRECT3DTEXTURE9 *ppTextureAry;
 		DWORD dwMatNum;
 		void* pBuf;
 		size_t iBufSize;
@@ -143,7 +183,7 @@ public:
 
 	LPDIRECT3DTEXTURE9       rayMap;
 
-	BOOL m_bIsFlag;
+	int m_iFlag;
 
 };
 

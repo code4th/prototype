@@ -126,7 +126,7 @@ void Prototype::ExecOnceBeforeUpdate()
 	// バックバッファを覚えとく
 	GetGraphicDevice()->GetDevice()->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer);
 
-	GetGraphicDevice()->GetDevice()->CreateTexture(GetScreenWidth(), GetScreenHeight(), 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texColor, 0);
+	GetGraphicDevice()->GetDevice()->CreateTexture(GetScreenWidth(), GetScreenHeight(), 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texColor, 0);
 	texColor->GetSurfaceLevel(0, &surColor);
 	GetGraphicDevice()->GetDevice()->CreateTexture(GetScreenWidth(), GetScreenHeight(), 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texNormalDepth, 0);
 	texNormalDepth->GetSurfaceLevel(0, &surNormalDepth);
@@ -199,8 +199,10 @@ void Prototype::ExecOnceBeforeUpdate()
 //	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Big_Ears.x")));
 //	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Head_Sad.x")));
 	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/LandShark.x")));
-	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/wall_with_pillars.x")));
-	m_bIsFlag = TRUE;
+//	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/wall_with_pillars.x")));
+//	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Cube2.x")));
+	
+	m_iFlag = 0;
 /*
 	while(1)
 	{
@@ -240,8 +242,9 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,3,"deltaMicroSecond:(realtime:%d)",Time::GetRealDeltaTimeMicroSecond());
 	DebugPrint(0,4,"fps:%f(ave:%.1f)\n",Time::GetFPS(),Time::GetFPSAve());
 
-	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond())*0.5f;
-	l=sin(f)*2.f+300.f;
+	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond())*0.2f;
+//	f=3.14f*0.5f;
+	l=sin(f)*2.f+200.f;
 
 	if(true == GamePad(0).IsPressed(InputDevice::GamePad::A))
 	{
@@ -253,7 +256,8 @@ void Prototype::UpdateFrame()
 	}
 
 	if(true == GamePad(0).IsPressed(InputDevice::GamePad::X))
-		m_bIsFlag=!m_bIsFlag;
+		m_iFlag++;
+	m_iFlag%=2;
 
 	m_rpActionController->Update();
 
@@ -267,13 +271,14 @@ void Prototype::UpdateFrame()
 
 	pEffect->SetMatrix( "m_WVP", &mat );
 	pEffect->SetVector( "m_LightDir", &D3DXVECTOR4(1,1,1,0) );
-	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(0.5,0.5,0.5,0));
-	pEffect->SetBool( "m_bIsFlag" , m_bIsFlag);
+	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(1.0,1.0,1.0,0));
+	pEffect->SetInt( "m_iFlag" , m_iFlag);
 
 	LPDIRECT3DDEVICE9 d3ddevice = Framework::Get().GetGraphicDevice()->GetDevice();
+	HRESULT hr;
+	hr = d3ddevice->SetRenderTarget(0, surColor);
+	hr = d3ddevice->SetRenderTarget(1, surNormalDepth);
 
-	d3ddevice->SetRenderTarget(0, surColor);
-	d3ddevice->SetRenderTarget(1, surNormalDepth);
     d3ddevice->Clear( 0, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
 
 	// 描画開始
