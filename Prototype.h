@@ -58,6 +58,7 @@ public:
 		MeshObject(const kickflip::hashString& kFileName)
 			: Resource(kFileName)
 			, pMesh(NULL)
+			, ppTextureAry(NULL)
 			, pMatAry(NULL)
 			, dwMatNum(0)
 			, pBuf(NULL)
@@ -68,6 +69,8 @@ public:
 		virtual ~MeshObject()
 		{
 			if(NULL != pBuf) delete pBuf;
+			if(NULL != ppTextureAry) delete ppTextureAry;
+			if(NULL != pMatAry) delete pMatAry;
 		}
 		void Draw()
 		{
@@ -103,20 +106,7 @@ public:
 		}
 		virtual bool Finish()
 		{
-/*
-			if(NULL == pBuf) return false;
-			Framework::Get().GetGraphicDevice()->Lock();
-			HRESULT hRes = D3DXLoadMeshFromXInMemory(pBuf,iBufSize,D3DXMESH_MANAGED, Framework::Get().GetGraphicDevice()->GetDevice(), NULL, &pMatBuf, NULL, &dwMatNum, &pMesh);
-			Framework::Get().GetGraphicDevice()->Unlock();
-			free(pBuf);pBuf=NULL;
-			if(D3D_OK != hRes)
-			{
-					return false;
-			}
 
-			pMatAry = (D3DXMATERIAL*)pMatBuf->GetBufferPointer();
-			Complete();
-*/
 			if(NULL == pBuf) return false;
 
 			LPDIRECT3DDEVICE9 d3dev = Framework::Get().GetGraphicDevice()->GetDevice();
@@ -132,9 +122,9 @@ public:
 
 			// LPDIRECT3DTEXTURE9型の配列を確保
 			ppTextureAry = 
-				(LPDIRECT3DTEXTURE9*)malloc(sizeof(LPDIRECT3DTEXTURE9) * dwMatNum);
+				(LPDIRECT3DTEXTURE9*)std::malloc(sizeof(LPDIRECT3DTEXTURE9) * dwMatNum);
 			// D3DMATERIAL9構造体の配列を確保
-			pMatAry = (D3DMATERIAL9*)malloc(sizeof(D3DMATERIAL9) * dwMatNum);
+			pMatAry = (D3DMATERIAL9*)std::malloc(sizeof(D3DMATERIAL9) * dwMatNum);
 			for (int i = 0; i < (int)dwMatNum; i++)
 			{
 				pMatAry[i] = d3dxmatrs[i].MatD3D; // 材質の情報をコピー

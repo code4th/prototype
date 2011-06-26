@@ -96,9 +96,10 @@ float strength = 0.0007;
 float offset = 18.0;
 float falloff = 0.000002;
 float rad = 0.03;
+//float rad = 0.006;
 
 #define SAMPLES 16 // 10 is good
-const float invSamples = 1.0/16.0;
+float invSamples = 1.0/16.0;
 
 sampler rayMap : register(s0) = sampler_state 
 { 
@@ -122,18 +123,11 @@ sampler colorMap : register(s2) = sampler_state
 //--------------------------------------------------------------------------------------
 // Pixel shader output structure
 //--------------------------------------------------------------------------------------
-struct SSPS_OUTPUT
-{
-    float4 RGBColor	: COLOR0;  // Pixel color
-};
 //--------------------------------------------------------------------------------------
 // ピクセルシェーダ メイン http://www.gamerendering.com/2009/01/14/ssao/ の移植(微修正)
 //--------------------------------------------------------------------------------------
-SSPS_OUTPUT SSAO( float2 uv		: TEXCOORD0 )
+float4 SSAO( float2 uv		: TEXCOORD0 ) :COLOR0
 {
-
-    SSPS_OUTPUT Output;
-
 	// 現在フラグメントのピクセル
 	float4 currentPixel = tex2D(normalMap, uv);
 
@@ -143,6 +137,8 @@ SSPS_OUTPUT SSAO( float2 uv		: TEXCOORD0 )
 	float currentDepth = currentPixel.a;
 	// 現在フラグメントの座標
 	float3 currentPos = float3(uv.x, uv.y, currentDepth);
+
+	float4 curentColor = tex2D(colorMap, uv);
 
 	// サンプリング半径。手前ほど周りを見る距離を大きくする(パースの補正)
 	float radD = rad / currentDepth;
@@ -155,7 +151,7 @@ SSPS_OUTPUT SSAO( float2 uv		: TEXCOORD0 )
 		float3 ray = radD * fres;
 
 		// 光線が半球の外(反対)なら反転する
-		float2 sample = currentPos + sign(dot(ray,currentNormal) )*ray;
+		float2 sample = currentPos.xy + sign( dot(ray,currentNormal) )*ray.xy;
 		// チェックするフラグメントを取得
 		float4 samplePixel = tex2D(normalMap, sample.xy);
 		// チェックするフラグメントの法線を取得
@@ -170,27 +166,166 @@ SSPS_OUTPUT SSAO( float2 uv		: TEXCOORD0 )
 		float dDepth = currentDepth - samplePixel.a;
 
 		// 法線の差
-		float dNormal = (1.0 - dot(normalize(sampleNormal), normalize(currentNormal)));
+		float dNormal = 1.0f - dot(normalize(sampleNormal), normalize(currentNormal));
 
 		//    前後関係での遮蔽有無         角度による遮蔽           前後関係での遮蔽変化をソフトに
-		ao += step(falloff, dDepth) * dNormal * (1.0 - smoothstep(falloff, strength, dDepth));
-//		float invLen = 1.f/length(currentPos-samplePos);
-		gi += ao * sampleColor;
+		float powDepth = step(falloff, dDepth);
+		ao += powDepth * dNormal * (1.0 - smoothstep(falloff, strength, dDepth));
+		gi += powDepth * dNormal * (1.0 - smoothstep(falloff, strength, dDepth)) * sampleColor;
 	}
 
 	// AO項の計算。遮蔽されているほどblが大きいので、暗くなる。
-	ao = totStrength * ao * invSamples;
-	gi = 0.2 * gi * invSamples;
-//	Output.RGBColor = tex2D(colorMap, uv)*(1-gi*(1.0-ao));
-
-	if(1==m_iFlag)
-		Output.RGBColor = tex2D(colorMap, uv);
+	ao = 1.0 - totStrength * ao * invSamples;
+	gi = 1.0 * gi * invSamples;
+/*
 	if(0==m_iFlag)
-		Output.RGBColor = tex2D(colorMap, uv)*(1-gi*(1.0-ao));
+		return  float4(ao,ao,ao,1);
+	if(1==m_iFlag)
+	    return gi+float4(ao,ao,ao,1);
+	if(2==m_iFlag)
+	    return gi;
+*/
+	return curentColor*ao +gi;
 
-	return Output;
+//    return  float4(ao,ao,ao,1);
+//    return  gi;
 }
 
+void DecodeDepthNormal(in float4 _in, out float _depth, out float3 _normal)
+{
+	// 現在フラグメントの法線
+	_normal = _in.xyz * 2.0f - 1.0f;
+	// 現在フラグメントの深度
+	_depth = _in.w;
+
+}
+
+float4 SSGI(      half4 uv : TEXCOORD0 ): COLOR0
+{
+    half radius = 0.2;
+    half intensity = 0.01;	// 強度
+
+    // Kernel definition
+    const half3 kernel[32] = {
+    half3(-0.556641,-0.037109,-0.654297),
+    half3(0.173828,0.111328,0.064453),
+    half3(0.001953,0.082031,-0.060547),
+    half3(0.220703,-0.359375,-0.062500),
+    half3(0.242188,0.126953,-0.250000),
+    half3(0.070313,-0.025391,0.148438),
+    half3(-0.078125,0.013672,-0.314453),
+    half3(0.117188,-0.140625,-0.199219),
+    half3(-0.251953,-0.558594,0.082031),
+    half3(0.308594,0.193359,0.324219),
+    half3(0.173828,-0.140625,0.031250),
+    half3(0.179688,-0.044922,0.046875),
+    half3(-0.146484,-0.201172,-0.029297),
+    half3(-0.300781,0.234375,0.539063),
+    half3(0.228516,0.154297,-0.119141),
+    half3(-0.119141,-0.003906,-0.066406),
+    half3(-0.218750,0.214844,-0.250000),
+    half3(0.113281,-0.091797,0.212891),
+    half3(0.105469,-0.039063,-0.019531),
+    half3(-0.705078,-0.060547,0.023438),
+    half3(0.021484,0.326172,0.115234),
+    half3(0.353516,0.208984,-0.294922),
+    half3(-0.029297,-0.259766,0.089844),
+    half3(-0.240234,0.146484,-0.068359),
+    half3(-0.296875,0.410156,-0.291016),
+    half3(0.078125,0.113281,-0.126953),
+    half3(-0.152344,-0.019531,0.142578),
+    half3(-0.214844,-0.175781,0.191406),
+    half3(0.134766,0.414063,-0.707031),
+    half3(0.291016,-0.833984,-0.183594),
+    half3(-0.058594,-0.111328,0.457031),
+    half3(-0.115234,-0.287109,-0.259766),
+    };
+
+    half4 screenTC = uv;
+
+    // Compute dithering vector 誤差拡散的な
+    half3 normalDither = normalize(tex2D(rayMap, screenTC.wz).xyz * 2.h - 1.h);
+
+    // Get view space normal and depth
+    float4 encodedDepthNormal = tex2D(normalMap, screenTC.xy);
+    float depth;
+    float3 normal_vs;
+    DecodeDepthNormal(encodedDepthNormal, depth, normal_vs);
+    //depth *= _ProjectionParams.z;
+
+    // Init the occlusion
+    half3 colorBleeding = 0;
+    for (int i = 0; i < SAMPLES; i++) {
+    half3 sample;
+
+    // Construct the sample
+    sample = reflect(kernel[i] * radius, normalDither);
+    sample = sample * (dot(sample, normal_vs) < 0 ? -1:1);
+
+    // Find the offset
+    half gamma = 1.h / (1.h + sample.z);
+    half2 centerPos = (screenTC.xy * 2) - half2(1, 1);
+    half2 samplePos = (centerPos + sample.xy) * (gamma * 0.5h) + 0.5h;
+
+    // Get view space normal and depth
+    float4 sampleEncodedDepthNormal;
+    float tapDepth = 0.0h;
+    float3 tapNormal_vs;
+    sampleEncodedDepthNormal = tex2D(normalMap, samplePos);
+    DecodeDepthNormal(sampleEncodedDepthNormal, tapDepth, tapNormal_vs);
+    //tapDepth *= _ProjectionParams.z;
+
+    // Get radiance.
+    half3 tapRadiance = tex2D(colorMap, samplePos);
+
+    // Compute the direction vector between the point and the bleeder
+    half alpha = gamma * tapDepth;
+    half3 D = half3(centerPos, 1.h) * (alpha - depth) + sample * alpha;
+    const float minDist = 0.0005;
+    half r = max(minDist, length(D));
+    D = normalize(D);
+
+    // Compute attenuation
+    half atten =
+        //pow(minDist / r, 2)
+        //min(centerDepth * pow(0.05 / r, 2), 1)
+        min(pow(0.05 * depth / r, 2), 1)
+        //1
+        ;
+
+    float factor = 400
+        // Visibility
+        * ((depth * (1 + sample.z) - tapDepth) > 0)
+        // Reflector lambertian term
+        * max(0, -dot(D, tapNormal_vs))
+        // Incident radiance projection term
+        * dot(D, normal_vs) 
+        // Attenuation term
+        * atten
+        ;
+
+    half3 radiance = factor * tapRadiance;
+    colorBleeding += radiance;
+    }
+
+    // Normalize result
+    colorBleeding *= intensity / (half)SAMPLES;
+    return half4(max(0,colorBleeding), depth);
+}
+
+float4 SSDO (half4 uv : TEXCOORD0) : COLOR0
+{
+    half4 scene = tex2D(colorMap, uv);
+    half ao = SSAO(uv);
+    float3 gi = SSGI(uv);
+
+	if(1==m_iFlag)
+	    return float4(gi, 1.0);
+//	if(2==m_iFlag)
+	    return float4(ao,ao,ao, 1.0);
+
+//    return float4(scene.rgb *ao + gi, 1.0);
+}
 //--------------------------------------------------------------------------------------
 // Renders scene 
 //--------------------------------------------------------------------------------------
@@ -204,5 +339,6 @@ technique RenderScene0
     pass P1
     {
         PixelShader  = compile ps_3_0 SSAO();
+//        PixelShader  = compile ps_3_0 SSDO();
     }
 }

@@ -10,7 +10,7 @@ using namespace kickflip;
 
 void Prototype::InitSetting()
 {
-	SetScreenHeight(320);
+	SetScreenHeight(512);
 }
 static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, const D3DXVECTOR2* pTexelSize, void* data)
 {
@@ -135,6 +135,12 @@ void Prototype::ExecOnceBeforeUpdate()
 	GetGraphicDevice()->GetDevice()->CreateTexture(16, 16, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED, &rayMap, 0);
 	D3DXFillTexture(rayMap, makeRayMap, 0);
 
+/*
+	D3DXCreateTextureFromFile(
+		GetGraphicDevice()->GetDevice(), 
+		"media/PointsOnSphereVO4x4.dds", 
+		&rayMap );
+*/
 
 	// ƒrƒ…[•ÏŠ·EË‰e•ÏŠ·
 	D3DXMatrixPerspectiveFovLH( &Proj, D3DXToRadian(45), static_cast<float>(GetScreenWidth())/static_cast<float>(GetScreenHeight()), 1.0f, 10000.0f);
@@ -242,9 +248,9 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,3,"deltaMicroSecond:(realtime:%d)",Time::GetRealDeltaTimeMicroSecond());
 	DebugPrint(0,4,"fps:%f(ave:%.1f)\n",Time::GetFPS(),Time::GetFPSAve());
 
-	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond())*0.2f;
+	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond())*0.1f;
 //	f=3.14f*0.5f;
-	l=sin(f)*2.f+200.f;
+	l=sin(f)*2.f+300.f;
 
 	if(true == GamePad(0).IsPressed(InputDevice::GamePad::A))
 	{
@@ -271,7 +277,7 @@ void Prototype::UpdateFrame()
 
 	pEffect->SetMatrix( "m_WVP", &mat );
 	pEffect->SetVector( "m_LightDir", &D3DXVECTOR4(1,1,1,0) );
-	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(1.0,1.0,1.0,0));
+	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(0.8,0.8,0.8,1.0));
 	pEffect->SetInt( "m_iFlag" , m_iFlag);
 
 	LPDIRECT3DDEVICE9 d3ddevice = Framework::Get().GetGraphicDevice()->GetDevice();
