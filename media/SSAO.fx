@@ -137,7 +137,7 @@ float4 SSAO( float2 uv		: TEXCOORD0 ) :COLOR0
 	float currentDepth = currentPixel.a;
 	// 現在フラグメントの座標
 	float3 currentPos = float3(uv.x, uv.y, currentDepth);
-
+	// 現在フラグメントのカラー
 	float4 curentColor = tex2D(colorMap, uv);
 
 	// サンプリング半径。手前ほど周りを見る距離を大きくする(パースの補正)
@@ -177,19 +177,9 @@ float4 SSAO( float2 uv		: TEXCOORD0 ) :COLOR0
 
 	ao = 1.0 - totStrengthAO * ao * invSamples;
 	gi = totStrengthGI * gi * invSamples;
-/*
-	if(0 == m_iFlag)
-		return float4(ao,ao,ao,1);
-	if(1 == m_iFlag)
-		return gi;
-		*/
-	if(0 == m_iFlag)
-		return gi;
 
-	return ao + gi;
-//	return curentColor*ao + gi;
+	return curentColor*ao+gi;
 
-//    return  gi;
 }
 
 void DecodeDepthNormal(in float4 _in, out float _depth, out float3 _normal)
@@ -320,10 +310,7 @@ float4 SSDO (half4 uv : TEXCOORD0) : COLOR0
     half ao = SSAO(uv);
     float3 gi = SSGI(uv);
 
-	if(1==m_iFlag)
-	    return float4(gi, 1.0);
-//	if(2==m_iFlag)
-	    return float4(ao,ao,ao, 1.0);
+	return float4(gi, 1.0);
 
 //    return float4(scene.rgb *ao + gi, 1.0);
 }
