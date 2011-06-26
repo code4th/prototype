@@ -276,6 +276,8 @@ namespace kickflip
 				if(true == kPad.m_kInputStateLog.empty())
 				{
 					// 履歴がなければ自分自身が最新
+					kPad.m_kInputState.on = 0;
+					kPad.m_kInputState.pressed = 0;
 				}else{
 					// 最新の状態をスタビライザーにフィードバック
 					rpInputStabilizer->GetGamePadData(idx).m_kInputState = kPad.m_kInputStateLog.back();

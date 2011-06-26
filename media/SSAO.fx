@@ -91,15 +91,15 @@ uniform float falloff = 0.000002;
 uniform float rad = 0.006;
 */
 
-float totStrength = 1.38;
-float strength = 0.0007;
-float offset = 18.0;
 float falloff = 0.000002;
+float totStrengthAO = 1.38;
+float totStrengthGI = 0.60;
+float strengthAO = 0.07;
+float strengthGI = 0.07;
 float rad = 0.03;
-//float rad = 0.006;
 
 #define SAMPLES 16 // 10 is good
-float invSamples = 1.0/16.0;
+float invSamples = 1.0f/16.0f;
 
 sampler rayMap : register(s0) = sampler_state 
 { 
@@ -143,15 +143,15 @@ float4 SSAO( float2 uv		: TEXCOORD0 ) :COLOR0
 	// サンプリング半径。手前ほど周りを見る距離を大きくする(パースの補正)
 	float radD = rad / currentDepth;
 
-	float ao = 0.0;
-	float4 gi = 0.0;
+	float ao = 0.f;
+	float4 gi = 0.f;
 	for(int i=0; i<SAMPLES;++i)
 	{
 		float3 fres = tex2D(rayMap, float2(float(i)/16.f,0)).xyz*2.f-1.f;
 		float3 ray = radD * fres;
 
 		// 光線が半球の外(反対)なら反転する
-		float2 sample = currentPos.xy + sign( dot(ray,currentNormal) )*ray.xy;
+		float3 sample = currentPos + sign( dot(ray,currentNormal) )*ray;
 		// チェックするフラグメントを取得
 		float4 samplePixel = tex2D(normalMap, sample.xy);
 		// チェックするフラグメントの法線を取得
@@ -159,35 +159,36 @@ float4 SSAO( float2 uv		: TEXCOORD0 ) :COLOR0
 		// チェックするフラグメントの色
 		float4 sampleColor = tex2D(colorMap, sample.xy);
 		// チェックするフラグメントの座標
-		float3 samplePos = float3(sample.x, sample.y, samplePixel.a);
+		float sampleDepth = samplePixel.a;
 
 
 		// 深度値の差
-		float dDepth = currentDepth - samplePixel.a;
+
+//		float dDepth = currentDepth - sampleDepth;
+		float dDepth = sample.z - sampleDepth;
 
 		// 法線の差
 		float dNormal = 1.0f - dot(normalize(sampleNormal), normalize(currentNormal));
 
 		//    前後関係での遮蔽有無         角度による遮蔽           前後関係での遮蔽変化をソフトに
-		float powDepth = step(falloff, dDepth);
-		ao += powDepth * dNormal * (1.0 - smoothstep(falloff, strength, dDepth));
-		gi += powDepth * dNormal * (1.0 - smoothstep(falloff, strength, dDepth)) * sampleColor;
+		ao += step(falloff, sample.z - samplePixel.a) * dNormal * (1.0 - smoothstep(falloff, strengthAO, dDepth));
+		gi += step(falloff, sample.z - samplePixel.a) * dNormal * (1.0 - smoothstep(falloff, strengthGI, dDepth)) * sampleColor;
 	}
 
-	// AO項の計算。遮蔽されているほどblが大きいので、暗くなる。
-	ao = 1.0 - totStrength * ao * invSamples;
-	gi = 1.0 * gi * invSamples;
+	ao = 1.0 - totStrengthAO * ao * invSamples;
+	gi = totStrengthGI * gi * invSamples;
 /*
-	if(0==m_iFlag)
-		return  float4(ao,ao,ao,1);
-	if(1==m_iFlag)
-	    return gi+float4(ao,ao,ao,1);
-	if(2==m_iFlag)
-	    return gi;
-*/
-	return curentColor*ao +gi;
+	if(0 == m_iFlag)
+		return float4(ao,ao,ao,1);
+	if(1 == m_iFlag)
+		return gi;
+		*/
+	if(0 == m_iFlag)
+		return gi;
 
-//    return  float4(ao,ao,ao,1);
+	return ao + gi;
+//	return curentColor*ao + gi;
+
 //    return  gi;
 }
 

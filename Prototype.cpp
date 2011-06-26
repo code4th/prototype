@@ -10,7 +10,7 @@ using namespace kickflip;
 
 void Prototype::InitSetting()
 {
-	SetScreenHeight(512);
+	SetScreenHeight(256);
 }
 static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, const D3DXVECTOR2* pTexelSize, void* data)
 {
@@ -262,8 +262,10 @@ void Prototype::UpdateFrame()
 	}
 
 	if(true == GamePad(0).IsPressed(InputDevice::GamePad::X))
+	{
 		m_iFlag++;
-	m_iFlag%=2;
+		m_iFlag%=2;
+	}
 
 	m_rpActionController->Update();
 
@@ -277,7 +279,7 @@ void Prototype::UpdateFrame()
 
 	pEffect->SetMatrix( "m_WVP", &mat );
 	pEffect->SetVector( "m_LightDir", &D3DXVECTOR4(1,1,1,0) );
-	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(0.8,0.8,0.8,1.0));
+	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(0.8f,0.8f,0.8f,1.0));
 	pEffect->SetInt( "m_iFlag" , m_iFlag);
 
 	LPDIRECT3DDEVICE9 d3ddevice = Framework::Get().GetGraphicDevice()->GetDevice();
