@@ -127,6 +127,8 @@ void Prototype::ExecOnceBeforeUpdate()
 	texColor->GetSurfaceLevel(0, &surColor);
 	GetGraphicDevice()->GetDevice()->CreateTexture(GetScreenWidth(), GetScreenHeight(), 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texNormalDepth, 0);
 	texNormalDepth->GetSurfaceLevel(0, &surNormalDepth);
+	GetGraphicDevice()->GetDevice()->CreateTexture(GetScreenWidth(), GetScreenHeight(), 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &texPosition, 0);
+	texPosition->GetSurfaceLevel(0, &surPosition);
 
 	//Create Noise
 //	GetGraphicDevice()->GetDevice()->CreateTexture(16, 16, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED, &rayMap, 0);
@@ -287,6 +289,7 @@ void Prototype::UpdateFrame()
 	HRESULT hr;
 	hr = d3ddevice->SetRenderTarget(0, surColor);
 	hr = d3ddevice->SetRenderTarget(1, surNormalDepth);
+	hr = d3ddevice->SetRenderTarget(2, surPosition);
 
     d3ddevice->Clear( 0, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
 
@@ -310,10 +313,12 @@ void Prototype::UpdateFrame()
 
 	d3ddevice->SetRenderTarget(0, backbuffer);
 	d3ddevice->SetRenderTarget(1, NULL);
+	d3ddevice->SetRenderTarget(2, NULL);
     d3ddevice->Clear( 0, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
     d3ddevice->SetTexture(0, rayMap );
     d3ddevice->SetTexture(1, texNormalDepth );
     d3ddevice->SetTexture(2, texColor );
+    d3ddevice->SetTexture(3, texPosition );
 
 	pEffect->BeginPass(1);
 	d3ddevice->SetFVF( d3dverts::fvf  );

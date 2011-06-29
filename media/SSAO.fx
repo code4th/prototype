@@ -54,7 +54,11 @@ VS_OUTPUT VS( float4 Pos     : POSITION,   //頂点の座標
 
 	Out.Depth = Out.Pos;   
 	// normal in eye space
-	Out.Normal= normalize( mul( Normal.xyz, m_WVP )).xyz;
+
+	float3x3 gl_NormalMatrix   = m_WVP;
+	gl_NormalMatrix = transpose(gl_NormalMatrix); 
+
+	Out.Normal= normalize( mul( Normal.xyz, gl_NormalMatrix )).xyz;
 
    return Out;
 }
@@ -73,6 +77,7 @@ struct SP_OUTPUT
 {
 	float4 Color		: COLOR0;	// カラー
 	float4 NormalDepth  : COLOR1;	// 法線と深度
+	float4 Position		: COLOR2;	// 座標
 };
 SP_OUTPUT PS( VS_OUTPUT In )
 {  
@@ -82,6 +87,9 @@ SP_OUTPUT PS( VS_OUTPUT In )
 
 	Out.NormalDepth.rgb = (normalize(In.Normal.xyz)+1.0f)*0.5f;
 	Out.NormalDepth.a = In.Depth.z/In.Depth.w;
+
+	Out.Position = Out.NormalDepth;
+	Out.Position.z = 0;
 
 	return Out;
 }
@@ -96,14 +104,20 @@ sampler rayMap : register(s0) = sampler_state
 sampler normalMap : register(s1) = sampler_state
 {
     MipFilter = NONE;
-    MinFilter = LINEAR;
-    MagFilter = LINEAR;
+    MinFilter = POINT;
+    MagFilter = POINT;
 };
 sampler colorMap : register(s2) = sampler_state
 {
     MipFilter = NONE;
     MinFilter = LINEAR;
     MagFilter = LINEAR;
+};
+sampler posMap : register(s3) = sampler_state
+{
+    MipFilter = NONE;
+    MinFilter = POINT;
+    MagFilter = POINT;
 };
 /*
 uniform float totStrength = 1.38;
@@ -127,19 +141,29 @@ float invSamples = 1.0f/16.0f;
 //--------------------------------------------------------------------------------------
 // ピクセルシェーダ メイン http://www.gamerendering.com/2009/01/14/ssao/ の移植(微修正)
 //--------------------------------------------------------------------------------------
-float4 SSAOPS( float2 uv		: TEXCOORD0 ) :COLOR0
+struct PS_INPUT
+{
+   float2 vPos   : VPOS;     // 
+   float2 uv   : TEXCOORD0;    //テクセル座標
+};
+
+
+float4 SSAOPS( PS_INPUT In ) :COLOR0
 {
 	// 現在フラグメントのピクセル
-	float4 currentPixel = tex2D(normalMap, uv);
+	float4 currentPixel = tex2D(normalMap, In.uv);
+
+	return float4(currentPixel.xyz,1);
 
 	// 現在フラグメントの法線
 	float3 currentNormal = currentPixel.xyz * 2.0f - 1.0f;
 	// 現在フラグメントの深度
 	float currentDepth = currentPixel.a;
 	// 現在フラグメントの座標
-	float3 currentPos = float3(uv, currentDepth);
+	float3 currentPos = float3(In.vPos, currentDepth);
+//	float3 currentPos = tex2D(posMap, In.uv);
 	// 現在フラグメントのカラー
-	float4 curentColor = tex2D(colorMap, uv);
+	float4 curentColor = tex2D(colorMap, In.uv);
 
 	// サンプリング半径。手前ほど周りを見る距離を大きくする(パースの補正)
 	float radD = rad / currentDepth;
@@ -154,7 +178,7 @@ float4 SSAOPS( float2 uv		: TEXCOORD0 ) :COLOR0
 		// 光線が半球の外(反対)なら反転する
 		float3 samplePos = currentPos + sign( dot(ray,currentNormal) )*ray;
 		// チェックするフラグメントを取得
-		float4 samplePixel = tex2D(normalMap, samplePos.xy);
+		float4 samplePixel = tex2D(normalMap, (mul(samplePos,m_View)+1.f).xy*0.5f);
 		// チェックするフラグメントの法線を取得
 		float3 sampleNormal = samplePixel.xyz * 2.0f - 1.0f;
 		// チェックするフラグメントの色
@@ -173,7 +197,7 @@ float4 SSAOPS( float2 uv		: TEXCOORD0 ) :COLOR0
 
 		//    前後関係での遮蔽有無         角度による遮蔽           前後関係での遮蔽変化をソフトに
 //		ao += step(falloff, dDepth) * dNormal * (1.0 - smoothstep(falloff, strengthAO, dDepth));
-		ao += step(0, dDepth) * strengthAO*2.0f;
+		ao += smoothstep(falloff, strengthAO, dDepth2);
 		gi += step(falloff, dDepth) * dNormal * (1.0 - smoothstep(falloff, strengthGI, dDepth)) * sampleColor;
 	}
 
@@ -306,7 +330,7 @@ float4 SSGI(      half4 uv : TEXCOORD0 ): COLOR0
     colorBleeding *= intensity / (half)SAMPLES;
     return half4(max(0,colorBleeding), depth);
 }
-
+/*
 float4 SSDO (half4 uv : TEXCOORD0) : COLOR0
 {
     half4 scene = tex2D(colorMap, uv);
@@ -317,6 +341,7 @@ float4 SSDO (half4 uv : TEXCOORD0) : COLOR0
 
 //    return float4(scene.rgb *ao + gi, 1.0);
 }
+*/
 //--------------------------------------------------------------------------------------
 // Renders scene 
 //--------------------------------------------------------------------------------------

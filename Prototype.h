@@ -170,6 +170,8 @@ public:
 	LPDIRECT3DSURFACE9       surColor;
 	LPDIRECT3DTEXTURE9       texNormalDepth;
 	LPDIRECT3DSURFACE9       surNormalDepth;
+	LPDIRECT3DTEXTURE9       texPosition;
+	LPDIRECT3DSURFACE9       surPosition;
 
 	LPDIRECT3DTEXTURE9       rayMap;
 
