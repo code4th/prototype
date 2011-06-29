@@ -33,6 +33,7 @@ struct VS_OUTPUT
 //バーテックスシェーダー
 VS_OUTPUT VS( float4 Pos     : POSITION,   //頂点の座標
               float4 Normal  : NORMAL,     //法線ベクトル
+              float4 Tangent  : TANGENT,     //法線ベクトル
               float2 Tex     : TEXCOORD0 ) //テクセル
 {
 	VS_OUTPUT Out = (VS_OUTPUT)0;
@@ -55,8 +56,21 @@ VS_OUTPUT VS( float4 Pos     : POSITION,   //頂点の座標
 	Out.Depth = Out.Pos;   
 	// normal in eye space
 
-	float3x3 gl_NormalMatrix   = m_WVP;
-	gl_NormalMatrix = transpose(gl_NormalMatrix); 
+//	float3x3 gl_NormalMatrix   = m_WVP;
+//	gl_NormalMatrix = transpose(gl_NormalMatrix); 
+
+    // 法線と接線
+    // の変換
+    float3 wNormal = mul( Normal, m_WVP );
+    float3 wTangent = mul( Tangent, m_WVP );
+
+    // 従法線を作成するための外積
+    float3 wBinorm = cross( wTangent, wNormal );
+
+    // 最初の手法はディフューズ dot3 バンプマップ
+    // ライト ベクトルを接空間に変換する   
+    float3x3 gl_NormalMatrix = float3x3(wTangent, wBinorm, wNormal);
+    gl_NormalMatrix = transpose(gl_NormalMatrix);
 
 	Out.Normal= normalize( mul( Normal.xyz, gl_NormalMatrix )).xyz;
 
@@ -153,14 +167,14 @@ float4 SSAOPS( PS_INPUT In ) :COLOR0
 	// 現在フラグメントのピクセル
 	float4 currentPixel = tex2D(normalMap, In.uv);
 
-	return float4(currentPixel.xyz,1);
+//	return float4(currentPixel.xyz,1);
 
 	// 現在フラグメントの法線
 	float3 currentNormal = currentPixel.xyz * 2.0f - 1.0f;
 	// 現在フラグメントの深度
 	float currentDepth = currentPixel.a;
 	// 現在フラグメントの座標
-	float3 currentPos = float3(In.vPos, currentDepth);
+	float3 currentPos = float3(In.uv, currentDepth);
 //	float3 currentPos = tex2D(posMap, In.uv);
 	// 現在フラグメントのカラー
 	float4 curentColor = tex2D(colorMap, In.uv);
@@ -178,7 +192,8 @@ float4 SSAOPS( PS_INPUT In ) :COLOR0
 		// 光線が半球の外(反対)なら反転する
 		float3 samplePos = currentPos + sign( dot(ray,currentNormal) )*ray;
 		// チェックするフラグメントを取得
-		float4 samplePixel = tex2D(normalMap, (mul(samplePos,m_View)+1.f).xy*0.5f);
+		float4 samplePixel = tex2D(normalMap, samplePos.xy);
+//		float4 samplePixel = tex2D(normalMap, (mul(samplePos,m_View)+1.f).xy*0.5f);
 		// チェックするフラグメントの法線を取得
 		float3 sampleNormal = samplePixel.xyz * 2.0f - 1.0f;
 		// チェックするフラグメントの色
