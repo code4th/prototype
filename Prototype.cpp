@@ -14,21 +14,18 @@ void Prototype::InitSetting()
 }
 static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, const D3DXVECTOR2* pTexelSize, void* data)
 {
-/*
 	float r = 1.0f * (float)rand() / (float)RAND_MAX;
 	float t = 6.2831853f * (float)rand() / ((float)RAND_MAX + 1.0f);
 	float cp = 2.0f * (float)rand() / (float)RAND_MAX - 1.0f;
 	float sp = sqrt(1.0f - cp * cp);
 	float ct = cos(t), st = sin(t);
 
-	pOut->x = abs(r * sp * ct);
-	pOut->y = abs(r * sp * st);
-	pOut->z = abs(r * cp);
-
-// DebugTrace("%f,%f,%f\n",pOut->x,pOut->y,pOut->z);
-  pOut->w = 0;
-*/
-  static int i=0;
+	pOut->x = ((r * sp * ct)+1.f)*0.5f;
+	pOut->y = ((r * sp * st)+1.f)*0.5f;
+	pOut->z = ((r * cp)+1.f)*0.5f;
+	pOut->w = 0;
+/*
+	static int i=0;
 
 	D3DXVECTOR3 vec;
 	switch(i%16)
@@ -58,7 +55,7 @@ static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, c
 	pOut->w = 0.f;
 
 	++i;
-
+*/
 }
 void Prototype::ExecOnceBeforeUpdate()
 {
@@ -118,7 +115,7 @@ void Prototype::ExecOnceBeforeUpdate()
 		if( pErr != NULL )
 		{	// コンパイルエラー出力
 			const char *err = (char*)pErr->GetBufferPointer();
-			DebugTrace("shaderERR:%s\n", err );
+			DebugTrace("%s\n", err );
 
 			pErr->Release();
 		}
@@ -132,15 +129,13 @@ void Prototype::ExecOnceBeforeUpdate()
 	texNormalDepth->GetSurfaceLevel(0, &surNormalDepth);
 
 	//Create Noise
-	GetGraphicDevice()->GetDevice()->CreateTexture(16, 16, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED, &rayMap, 0);
-	D3DXFillTexture(rayMap, makeRayMap, 0);
+//	GetGraphicDevice()->GetDevice()->CreateTexture(16, 16, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED, &rayMap, 0);
+//	D3DXFillTexture(rayMap, makeRayMap, 0);
 
-/*
 	D3DXCreateTextureFromFile(
 		GetGraphicDevice()->GetDevice(), 
-		"media/PointsOnSphereVO4x4.dds", 
+		"media/noise.dds", 
 		&rayMap );
-*/
 
 	// ビュー変換・射影変換
 	D3DXMatrixPerspectiveFovLH( &Proj, D3DXToRadian(45), static_cast<float>(GetScreenWidth())/static_cast<float>(GetScreenHeight()), 1.0f, 10000.0f);
@@ -248,10 +243,6 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,3,"deltaMicroSecond:(realtime:%d)",Time::GetRealDeltaTimeMicroSecond());
 	DebugPrint(0,4,"fps:%f(ave:%.1f)\n",Time::GetFPS(),Time::GetFPSAve());
 
-	f+=static_cast<float>(Time::GetFrameDeltaTimeSecond())*0.1f;
-//	f=3.14f*0.5f;
-	l=sin(f)*2.f+300.f;
-
 	if(true == GamePad(0).IsPressed(InputDevice::GamePad::A))
 	{
 		m_rpActionController->ChangeAction(_H("Punch"));
@@ -267,17 +258,27 @@ void Prototype::UpdateFrame()
 		m_iFlag%=2;
 	}
 
+	if(false == GamePad(0).IsOn(InputDevice::GamePad::Y))
+	{
+		f+=static_cast<float>(Time::GetFrameDeltaTimeSecond())*0.1f;
+	//	f=3.14f*0.5f;
+		l=sin(f)*2.f+300.f;
+	}
+
+
 	m_rpActionController->Update();
 
 	GetInputDevice()->DebugPrintGamePad(0,5);
 
 	// エフェクト内のワールドビュー射影変換行列を設定
 	D3DXMATRIX mat;
-	D3DXMatrixLookAtLH( &View, &D3DXVECTOR3(l*sin(f),5.f,-l*cos(f)), &D3DXVECTOR3(0,0,0), &D3DXVECTOR3(0,1,0) );
+	D3DXMatrixLookAtLH( &View, &D3DXVECTOR3(l*sin(f),-l*cos(f*2.f),-l*cos(f)), &D3DXVECTOR3(0,0,0), &D3DXVECTOR3(0,1,0) );
 	D3DXMatrixIdentity( &mat );
 	mat = mat * View * Proj;
 
 	pEffect->SetMatrix( "m_WVP", &mat );
+	pEffect->SetMatrix( "m_View", &View );
+	pEffect->SetMatrix( "m_Proj", &Proj );
 	pEffect->SetVector( "m_LightDir", &D3DXVECTOR4(1,1,1,0) );
 	pEffect->SetVector( "m_Ambient" , &D3DXVECTOR4(0.8f,0.8f,0.8f,1.0));
 	pEffect->SetInt( "m_iFlag" , m_iFlag);

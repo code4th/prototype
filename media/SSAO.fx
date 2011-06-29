@@ -8,6 +8,8 @@
 
 //ワールド、ビュー、射影座標変換マトリックス
 float4x4 m_WVP;
+float4x4 m_View;
+float4x4 m_Proj;
 
 //照明の方向ベクトル
 float4 m_LightDir;
@@ -22,10 +24,10 @@ int m_iFlag;
 //バーテックスシェーダーからピクセルシェーダーへ渡すための構造体
 struct VS_OUTPUT
 {
-   float4 Pos   : POSITION;     //頂点の座標
-   float4 Col   : COLOR0;       //頂点カラー
-   float4 depth : COLOR1 ;
-   float3 normal : COLOR2 ;
+   float4 Pos   : POSITION;     // 頂点の座標
+   float4 Col   : COLOR0;       // 頂点カラー
+   float4 Depth : COLOR1;		// 深度
+   float3 Normal: COLOR2;		// 法線
    float2 Tex   : TEXCOORD0;    //テクセル座標
 };
 //バーテックスシェーダー
@@ -33,26 +35,27 @@ VS_OUTPUT VS( float4 Pos     : POSITION,   //頂点の座標
               float4 Normal  : NORMAL,     //法線ベクトル
               float2 Tex     : TEXCOORD0 ) //テクセル
 {
-   VS_OUTPUT Out = (VS_OUTPUT)0;
+	VS_OUTPUT Out = (VS_OUTPUT)0;
    
-   //頂点の座標を行列変換する
-   Out.Pos    = mul( Pos, m_WVP );
+	//頂点の座標を行列変換する
+	Out.Pos    = mul( Pos, m_WVP );
    
-   //テクセルはそのまま格納する
-   Out.Tex    = Tex;
+	//テクセルはそのまま格納する
+	Out.Tex    = Tex;
    
-   //照明を逆方向にする。(注意１)
-   float3 L = -normalize( m_LightDir.xyz );
+	//照明を逆方向にする。(注意１)
+	float3 L = -normalize( m_LightDir.xyz );
    
-   //法線ベクトル。
-   float3 N = normalize( Normal.xyz );
+	//法線ベクトル。
+	float3 N = normalize( Normal.xyz );
 
-   //照明と法線からdot関数により、内積を計算する。またmax関数により頂点カラーの最小値を環境光に抑えるように設定する。(注意２)
-   Out.Col = max( m_Ambient, dot(N, L) );
-   Out.depth = Out.Pos;
-   
-   Out.normal = Normal.xyz;
-   Out.normal = normalize(Out.normal);
+	//照明と法線からdot関数により、内積を計算する。またmax関数により頂点カラーの最小値を環境光に抑えるように設定する。(注意２)
+	Out.Col = max( m_Ambient, dot(N, L) );
+
+	Out.Depth = Out.Pos;   
+	// normal in eye space
+	Out.Normal= normalize( mul( Normal.xyz, m_WVP )).xyz;
+
    return Out;
 }
 
@@ -76,30 +79,13 @@ SP_OUTPUT PS( VS_OUTPUT In )
 	SP_OUTPUT Out = (SP_OUTPUT)0;
    
 	Out.Color = In.Col * tex2D( tex0, In.Tex );
-//	Out.Color = In.Col;
-	Out.NormalDepth.xyz = In.normal;
-	Out.NormalDepth.w = In.depth.z/In.depth.w;
+
+	Out.NormalDepth.rgb = (normalize(In.Normal.xyz)+1.0f)*0.5f;
+	Out.NormalDepth.a = In.Depth.z/In.Depth.w;
+
 	return Out;
 }
 
-
-/*
-uniform float totStrength = 1.38;
-uniform float strength = 0.07;
-uniform float offset = 18.0;
-uniform float falloff = 0.000002;
-uniform float rad = 0.006;
-*/
-
-float falloff = 0.000002;
-float totStrengthAO = 1.38;
-float totStrengthGI = 0.60;
-float strengthAO = 0.07;
-float strengthGI = 0.07;
-float rad = 0.03;
-
-#define SAMPLES 16 // 10 is good
-float invSamples = 1.0f/16.0f;
 
 sampler rayMap : register(s0) = sampler_state 
 { 
@@ -119,14 +105,29 @@ sampler colorMap : register(s2) = sampler_state
     MinFilter = LINEAR;
     MagFilter = LINEAR;
 };
+/*
+uniform float totStrength = 1.38;
+uniform float strength = 0.07;
+uniform float offset = 18.0;
+uniform float falloff = 0.000002;
+uniform float rad = 0.006;
+*/
 
-//--------------------------------------------------------------------------------------
-// Pixel shader output structure
-//--------------------------------------------------------------------------------------
+float falloff = 0.000002;
+float totStrengthAO = 1.38;
+float totStrengthGI = 0.60;
+float strengthAO = 0.07;
+float strengthGI = 0.07;
+float rad = 0.006;
+
+#define SAMPLES 16 // 10 is good
+float invSamples = 1.0f/16.0f;
+
+
 //--------------------------------------------------------------------------------------
 // ピクセルシェーダ メイン http://www.gamerendering.com/2009/01/14/ssao/ の移植(微修正)
 //--------------------------------------------------------------------------------------
-float4 SSAO( float2 uv		: TEXCOORD0 ) :COLOR0
+float4 SSAOPS( float2 uv		: TEXCOORD0 ) :COLOR0
 {
 	// 現在フラグメントのピクセル
 	float4 currentPixel = tex2D(normalMap, uv);
@@ -136,7 +137,7 @@ float4 SSAO( float2 uv		: TEXCOORD0 ) :COLOR0
 	// 現在フラグメントの深度
 	float currentDepth = currentPixel.a;
 	// 現在フラグメントの座標
-	float3 currentPos = float3(uv.x, uv.y, currentDepth);
+	float3 currentPos = float3(uv, currentDepth);
 	// 現在フラグメントのカラー
 	float4 curentColor = tex2D(colorMap, uv);
 
@@ -147,38 +148,40 @@ float4 SSAO( float2 uv		: TEXCOORD0 ) :COLOR0
 	float4 gi = 0.f;
 	for(int i=0; i<SAMPLES;++i)
 	{
-		float3 fres = tex2D(rayMap, float2(float(i)/16.f,0)).xyz*2.f-1.f;
+		float3 fres = tex2D(rayMap, float2(float(i)/float(SAMPLES),0)).xyz*2.f-1.f;
 		float3 ray = radD * fres;
 
 		// 光線が半球の外(反対)なら反転する
-		float3 sample = currentPos + sign( dot(ray,currentNormal) )*ray;
+		float3 samplePos = currentPos + sign( dot(ray,currentNormal) )*ray;
 		// チェックするフラグメントを取得
-		float4 samplePixel = tex2D(normalMap, sample.xy);
+		float4 samplePixel = tex2D(normalMap, samplePos.xy);
 		// チェックするフラグメントの法線を取得
 		float3 sampleNormal = samplePixel.xyz * 2.0f - 1.0f;
 		// チェックするフラグメントの色
-		float4 sampleColor = tex2D(colorMap, sample.xy);
+		float4 sampleColor = tex2D(colorMap, samplePos.xy);
 		// チェックするフラグメントの座標
 		float sampleDepth = samplePixel.a;
 
 
 		// 深度値の差
 
-//		float dDepth = currentDepth - sampleDepth;
-		float dDepth = sample.z - sampleDepth;
+		float dDepth = currentDepth - sampleDepth;
+		float dDepth2 = samplePos.z - sampleDepth;
 
 		// 法線の差
 		float dNormal = 1.0f - dot(normalize(sampleNormal), normalize(currentNormal));
 
 		//    前後関係での遮蔽有無         角度による遮蔽           前後関係での遮蔽変化をソフトに
-		ao += step(falloff, sample.z - samplePixel.a) * dNormal * (1.0 - smoothstep(falloff, strengthAO, dDepth));
-		gi += step(falloff, sample.z - samplePixel.a) * dNormal * (1.0 - smoothstep(falloff, strengthGI, dDepth)) * sampleColor;
+//		ao += step(falloff, dDepth) * dNormal * (1.0 - smoothstep(falloff, strengthAO, dDepth));
+		ao += step(0, dDepth) * strengthAO*2.0f;
+		gi += step(falloff, dDepth) * dNormal * (1.0 - smoothstep(falloff, strengthGI, dDepth)) * sampleColor;
 	}
 
-	ao = 1.0 - totStrengthAO * ao * invSamples;
+	ao = 1.0f - totStrengthAO * ao * invSamples;
 	gi = totStrengthGI * gi * invSamples;
 
-	return curentColor*ao+gi;
+	return float4(ao,0,0,1);
+//	return curentColor*ao+gi;
 
 }
 
@@ -307,7 +310,7 @@ float4 SSGI(      half4 uv : TEXCOORD0 ): COLOR0
 float4 SSDO (half4 uv : TEXCOORD0) : COLOR0
 {
     half4 scene = tex2D(colorMap, uv);
-    half ao = SSAO(uv);
+    half ao = SSAOPS(uv);
     float3 gi = SSGI(uv);
 
 	return float4(gi, 1.0);
@@ -326,7 +329,7 @@ technique RenderScene0
     }
     pass P1
     {
-        PixelShader  = compile ps_3_0 SSAO();
+        PixelShader  = compile ps_3_0 SSAOPS();
 //        PixelShader  = compile ps_3_0 SSDO();
     }
 }
