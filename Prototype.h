@@ -162,7 +162,8 @@ public:
 	kickflip::ThreadRPtr m_rpThread;
 	kickflip::ActionControllerRPtr m_rpActionController;
 	kickflip::ResourceManagerRPtr m_rpResouceManager;
-	std::vector<MeshObjectRPtr> m_kMeshObjectList;
+	typedef std::vector<MeshObjectRPtr> MeshObjectList;
+	MeshObjectList m_kMeshObjectList;
 
 	LPDIRECT3DSURFACE9       backbuffer;
 

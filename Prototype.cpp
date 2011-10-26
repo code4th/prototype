@@ -10,7 +10,7 @@ using namespace kickflip;
 
 void Prototype::InitSetting()
 {
-	SetScreenHeight(256);
+	SetScreenHeight(640);
 }
 static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, const D3DXVECTOR2* pTexelSize, void* data)
 {
@@ -299,7 +299,7 @@ void Prototype::UpdateFrame()
 	pEffect->Begin( &numPass, 0 );
 
 	pEffect->BeginPass(0);
-	for(auto ite = m_kMeshObjectList.begin(); m_kMeshObjectList.end()!=ite; ite++)
+	for(MeshObjectList::iterator ite = m_kMeshObjectList.begin(); m_kMeshObjectList.end()!=ite; ite++)
 	{
 /*
 		if((*ite)->IsLoadFinish())

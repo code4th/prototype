@@ -7,13 +7,13 @@ kickflipFramework アプリケーション初期化のラッパ
 #include <d3d9.h>
 #include <d3dx9.h>
 #include <tchar.h>
-
+/*
 #if _DEBUG
 #define _CRTDBG_MAP_ALLOC
 #include <crtdbg.h>
 #define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
 #endif
-
+*/
 #include "kickflipFramework.h"
 #include "kickflipEmbedded.h"
 #include "kickflipThread.h"

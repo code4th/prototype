@@ -17,7 +17,8 @@ namespace kickflip
 		double m_fFrameDeltaSecond;
 		LONGLONG m_iFrameDeltaMicroSecond;
 
-		std::deque<double> m_fFPSLog;
+		typedef std::deque<double> FPSLog;
+		FPSLog m_fFPSLog;
 		const unsigned int iMaxFPSLog = 30;
 		double m_fFPSAve;
 
@@ -68,7 +69,7 @@ namespace kickflip
 			if(0<m_fFPSLog.size())
 			{
 				m_fFPSAve = 0.f;
-				for(auto ite = m_fFPSLog.begin(); m_fFPSLog.end()!=ite; ite++)
+				for(FPSLog::iterator ite = m_fFPSLog.begin(); m_fFPSLog.end()!=ite; ite++)
 					m_fFPSAve+=*ite;
 				m_fFPSAve/=m_fFPSLog.size();
 			}

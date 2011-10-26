@@ -10,15 +10,14 @@
 
 namespace kickflip
 {
-#define DebugPrint( x,y, str, ... )
-/*
+//#define DebugPrint( x,y, str, ... )
+
 #define DebugPrint( x,y, str, ... ) \
 	{ \
 		TCHAR c[2048]; \
 		_stprintf_s( c, str, __VA_ARGS__ );	\
 		DebugFont::GetInstance().Print(x,y,c);	\
 	}
-*/
 
 	class DebugFont
 	{
@@ -55,14 +54,15 @@ namespace kickflip
 			{}
 		};
 		typedef RefPtr<DebugFontObject> DebugFontObjectRPtr;
-		std::vector<DebugFontObjectRPtr> m_kFontObjectList;
+		typedef std::vector<DebugFontObjectRPtr> FontObjectList;
+		FontObjectList m_kFontObjectList;
 
 	public:
 		void Initialize();
 		void Print(int iX, int iY, const char* str)
 		{
-//			DebugFontObjectRPtr rpFontObject = new DebugFontObject(iX,iY,str);
-//			m_kFontObjectList.push_back(rpFontObject);
+			DebugFontObjectRPtr rpFontObject = new DebugFontObject(iX,iY,str);
+			m_kFontObjectList.push_back(rpFontObject);
 		}
 		void Render();
 

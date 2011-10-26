@@ -95,7 +95,7 @@ namespace kickflip
 
 		bool ChangeAction(hashString index)
 		{
-			auto ite = m_kActionMap.find(index.hash);
+			ActionMap::iterator ite = m_kActionMap.find(index.hash);
 			if(m_kActionMap.end() == ite) return false;
 			return ChangeAction(ite->second);
 		}
@@ -116,7 +116,7 @@ namespace kickflip
 		}
 		const ActionRPtr& GetNextAction()
 		{
-			auto ite = m_kActionQueue.begin();
+			ActionList::iterator ite = m_kActionQueue.begin();
 			if(m_kActionQueue.end() != ite)
 			{
 				// queue‚É‚ ‚é‚à‚Ì‚ð•Ô‚·

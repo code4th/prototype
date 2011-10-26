@@ -187,7 +187,7 @@ namespace kickflip
 				//DebugTrace("update:%dms\n",Time::GetRealTimeMilliSecond()-m_uiLastUpdateTime);
 				m_uiLastUpdateTime = Time::GetRealTimeMilliSecond();
 
-				for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
+				for(unsigned int idx = 0; GamePad::MAX_NUM>idx; idx++)
 				{
 					GamePad& kPad = m_kGamePad[idx];
 					XINPUT_STATE	kInputState;
@@ -246,7 +246,7 @@ namespace kickflip
 		bool Initialize()
 		{
 			m_kGamePadEmpty.Reset();
-			for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
+			for(unsigned int idx = 0; GamePad::MAX_NUM>idx; idx++)
 			{
 				m_kGamePad[idx].Reset();
 			}
@@ -260,7 +260,7 @@ namespace kickflip
 		{
 			m_rpThread->Lock();
 			InputStabilizerRPtr rpInputStabilizer = m_rpThread->GetThreadFunction();
-			for(auto idx = 0; GamePad::MAX_NUM>idx; idx++)
+			for(unsigned int idx = 0; GamePad::MAX_NUM>idx; idx++)
 			{
 				GamePad& kPadMapLog = rpInputStabilizer->GetGamePadData(idx);
 				m_kGamePad[idx] = kPadMapLog;
@@ -269,7 +269,7 @@ namespace kickflip
 			}
 			m_rpThread->Unlock();
 
-			for( auto idx = 0; GamePad::MAX_NUM>idx; idx++ )
+			for( unsigned int idx = 0; GamePad::MAX_NUM>idx; idx++ )
 			{
 				GamePad& kPad = m_kGamePad[idx];
 				kPad.UpdateState();
@@ -284,7 +284,7 @@ namespace kickflip
 					// カレントのステータスは過去をすべて含む
 					kPad.m_kInputState.on = 0;
 					kPad.m_kInputState.pressed = 0;
-					for(auto ite = kPad.m_kInputStateLog.begin(); kPad.m_kInputStateLog.end()!=ite; ite++)
+					for(GamePad::InputStateLog::iterator ite = kPad.m_kInputStateLog.begin(); kPad.m_kInputStateLog.end()!=ite; ite++)
 					{
 						kPad.m_kInputState.on|=ite->on;
 						kPad.m_kInputState.pressed|=ite->pressed;
@@ -349,7 +349,7 @@ namespace kickflip
 					sprintf_s(buf," cur:[{%s}/{%s}/{%s}]",getStringFromButtons(kGamePad.GetState().on).c_str(),getStringFromButtons(kGamePad.GetState().pressed).c_str(),getStringFromButtons(kGamePad.GetState().released).c_str());
 					strButton+=buf;
 
-					for(auto ite = kGamePad.GetStateLog().begin(); kGamePad.GetStateLog().end()!=ite; ite++)
+					for(GamePad::InputStateLog::const_iterator ite = kGamePad.GetStateLog().begin(); kGamePad.GetStateLog().end()!=ite; ite++)
 					{
 						sprintf_s(buf," %d:[{%s}/{%s}/{%s}]",idx,getStringFromButtons(ite->on).c_str(),getStringFromButtons(ite->pressed).c_str(),getStringFromButtons(ite->released).c_str());
 						strButton+=buf;

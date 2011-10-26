@@ -100,7 +100,7 @@ namespace kickflip
 				Lock();
 				if(false == m_kResuestQueue.empty())
 				{
-					auto ite = m_kResuestQueue.begin();
+					ResourceList::iterator ite = m_kResuestQueue.begin();
 					Resource* pResource = *(ite);
 					Unlock();
 					// ÉçÅ[Éhèàóù
@@ -183,7 +183,7 @@ namespace kickflip
 		template<class T>
 		RefPtr<T> Load(const hashString& kFileName, bool bIsBackLoad = false)
 		{
-			auto ite = m_kResourceMap.find(kFileName.hash);
+			ResourceMap::iterator ite = m_kResourceMap.find(kFileName.hash);
 
 			if(m_kResourceMap.end() != ite)
 			{

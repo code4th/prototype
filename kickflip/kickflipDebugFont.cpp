@@ -23,7 +23,7 @@ namespace kickflip
 	{
 //		m_kFontObjectList.clear();
 		if(NULL == m_pD3DFont) return;
-		for(auto ite = m_kFontObjectList.begin(); ite!=m_kFontObjectList.end(); ite++)
+		for(FontObjectList::iterator ite = m_kFontObjectList.begin(); ite!=m_kFontObjectList.end(); ite++)
 		{
 			RECT R;
 			SetRect( &R, 0, 0, 0, 0 );

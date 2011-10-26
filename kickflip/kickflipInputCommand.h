@@ -58,9 +58,9 @@ namespace kickflip
 			std::copy(kInputStateLog.begin(), kInputStateLog.end(), std::back_inserter(m_kInputStateLog));
 
 			ActionMap& kActionMap = m_kActionMap;
-			for(auto ite=kInputStateLog.begin(); kInputStateLog.end()!=ite;ite++)
+			for(InputDevice::GamePad::InputStateLog::iterator ite=kInputStateLog.begin(); kInputStateLog.end()!=ite;ite++)
 			{
-				auto iteFind = kActionMap.find(ite->on);
+				ActionMap::iterator iteFind = kActionMap.find(ite->on);
 			}
 		}
 
