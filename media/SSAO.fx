@@ -27,8 +27,8 @@ struct VS_OUTPUT
    float4 Pos   : POSITION;     // 頂点の座標
    float4 Col   : COLOR0;       // 頂点カラー
    float4 Depth : COLOR1;		// 深度
-   float3 Normal: COLOR2;		// 法線
-   float2 Tex   : TEXCOORD0;    //テクセル座標
+   float3 Normal: TEXCOORD0;		// 法線
+   float2 Tex   : TEXCOORD1;    //テクセル座標
 };
 //バーテックスシェーダー
 VS_OUTPUT VS( float4 Pos     : POSITION,   //頂点の座標
@@ -55,26 +55,10 @@ VS_OUTPUT VS( float4 Pos     : POSITION,   //頂点の座標
 
 	Out.Depth = Out.Pos;   
 	// normal in eye space
-
-//	float3x3 gl_NormalMatrix   = m_WVP;
-//	gl_NormalMatrix = transpose(gl_NormalMatrix); 
-
-    // 法線と接線
-    // の変換
-    float3 wNormal = mul( Normal, m_WVP );
-    float3 wTangent = mul( Tangent, m_WVP );
-
-    // 従法線を作成するための外積
-    float3 wBinorm = cross( wTangent, wNormal );
-
-    // 最初の手法はディフューズ dot3 バンプマップ
-    // ライト ベクトルを接空間に変換する   
-    float3x3 gl_NormalMatrix = float3x3(wTangent, wBinorm, wNormal);
-    gl_NormalMatrix = transpose(gl_NormalMatrix);
-
-	Out.Normal= normalize( mul( Normal.xyz, gl_NormalMatrix )).xyz;
-
-   return Out;
+	
+	Out.Normal= normalize(mul(Normal.xyz,(float3x3)m_View));
+	
+	return Out;
 }
 
 //****************************************************************
@@ -144,9 +128,9 @@ uniform float rad = 0.006;
 float falloff = 0.000002;
 float totStrengthAO = 1.38;
 float totStrengthGI = 0.60;
-float strengthAO = 0.07;
+float strengthAO = 0.08;
 float strengthGI = 0.07;
-float rad = 0.006;
+float rad = 0.008;
 
 #define SAMPLES 16 // 10 is good
 float invSamples = 1.0f/16.0f;
@@ -166,8 +150,11 @@ float4 SSAOPS( PS_INPUT In ) :COLOR0
 {
 	// 現在フラグメントのピクセル
 	float4 currentPixel = tex2D(normalMap, In.uv);
+	// 現在フラグメントのカラー
+	float4 curentColor = float4(tex2D(colorMap, In.uv).xyz,1);
 
 //	return float4(currentPixel.xyz,1);
+	return curentColor;
 
 	// 現在フラグメントの法線
 	float3 currentNormal = currentPixel.xyz * 2.0f - 1.0f;
@@ -175,12 +162,10 @@ float4 SSAOPS( PS_INPUT In ) :COLOR0
 	float currentDepth = currentPixel.a;
 	// 現在フラグメントの座標
 	float3 currentPos = float3(In.uv, currentDepth);
-//	float3 currentPos = tex2D(posMap, In.uv);
-	// 現在フラグメントのカラー
-	float4 curentColor = tex2D(colorMap, In.uv);
 
 	// サンプリング半径。手前ほど周りを見る距離を大きくする(パースの補正)
-	float radD = rad / currentDepth;
+//	float radD = rad / currentDepth;
+	float radD = rad;
 
 	float ao = 0.f;
 	float4 gi = 0.f;
@@ -219,8 +204,10 @@ float4 SSAOPS( PS_INPUT In ) :COLOR0
 	ao = 1.0f - totStrengthAO * ao * invSamples;
 	gi = totStrengthGI * gi * invSamples;
 
-	return float4(ao,0,0,1);
-//	return curentColor*ao+gi;
+//	return float4(ao,0,0,1);
+	return curentColor*ao+gi;
+//	return curentColor*ao;
+//	return curentColor;
 
 }
 

@@ -131,7 +131,8 @@ public:
 
 				// D3DXCreateTextureFromFileŠÖ”‚ª¸”s‚µ‚½ê‡
 				std::string fileNameTexture("media/");
-				fileNameTexture+=d3dxmatrs[i].pTextureFilename;
+				if(NULL != d3dxmatrs[i].pTextureFilename)
+					fileNameTexture+=d3dxmatrs[i].pTextureFilename;
 				if (D3DXCreateTextureFromFile(
 					d3dev, 
 					fileNameTexture.c_str(), 

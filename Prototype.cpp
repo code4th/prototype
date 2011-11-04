@@ -1,8 +1,11 @@
+#include <msgpack.hpp>
 #include "Prototype.h"
 #include "kickflip/kickflipHashString.h"
 #include "kickflip/kickflipEmbedded.h"
 #include "kickflip/kickflipDebugFont.h"
 #include "kickflip/kickflipThread.h"
+
+
 
 Prototype theApp;
 
@@ -59,6 +62,24 @@ static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, c
 }
 void Prototype::ExecOnceBeforeUpdate()
 {
+
+        std::vector<std::string> vec;
+        vec.push_back("Hello");
+        vec.push_back("MessagePack");
+        // serialize it into simple buffer.
+        msgpack::sbuffer sbuf;
+        msgpack::pack(sbuf, vec);
+ 
+        // deserialize it.
+        msgpack::unpacked msg;
+        msgpack::unpack(&msg, sbuf.data(), sbuf.size());
+ 
+        // print the deserialized object.
+        msgpack::object obj = msg.get();
+ 
+        // convert it into statically typed object.
+        std::vector<std::string> rvec;
+        obj.convert(&rvec);
 
 	m_rpResouceManager = new ResourceManager();
 /*
@@ -204,6 +225,7 @@ void Prototype::ExecOnceBeforeUpdate()
 	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/LandShark.x")));
 //	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/wall_with_pillars.x")));
 //	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/Cube2.x")));
+//	m_kMeshObjectList.push_back( m_rpResouceManager->LoadBackGround<MeshObject>(_H("media/sp.x")));
 	
 	m_iFlag = 0;
 /*
@@ -273,12 +295,14 @@ void Prototype::UpdateFrame()
 	GetInputDevice()->DebugPrintGamePad(0,5);
 
 	// エフェクト内のワールドビュー射影変換行列を設定
+	D3DXMATRIX WVP;
 	D3DXMATRIX mat;
 	D3DXMatrixLookAtLH( &View, &D3DXVECTOR3(l*sin(f),-l*cos(f*2.f),-l*cos(f)), &D3DXVECTOR3(0,0,0), &D3DXVECTOR3(0,1,0) );
+	D3DXMatrixIdentity( &WVP );
 	D3DXMatrixIdentity( &mat );
-	mat = mat * View * Proj;
+	WVP = mat * View * Proj;
 
-	pEffect->SetMatrix( "m_WVP", &mat );
+	pEffect->SetMatrix( "m_WVP", &WVP );
 	pEffect->SetMatrix( "m_View", &View );
 	pEffect->SetMatrix( "m_Proj", &Proj );
 	pEffect->SetVector( "m_LightDir", &D3DXVECTOR4(1,1,1,0) );
