@@ -1,9 +1,9 @@
 #include <msgpack.hpp>
 #include "Prototype.h"
-#include "kickflip/kickflipHashString.h"
-#include "kickflip/kickflipEmbedded.h"
-#include "kickflip/kickflipDebugFont.h"
-#include "kickflip/kickflipThread.h"
+#include "kickflip/HashString.h"
+#include "kickflip/Embedded.h"
+#include "kickflip/Debug/DebugFont.h"
+#include "kickflip/Thread.h"
 
 
 

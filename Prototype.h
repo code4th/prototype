@@ -1,11 +1,11 @@
 #pragma once
 
-#include "kickflip/kickflipframework.h"
-#include "kickflip/kickflipSmartPointer.h"
-#include "kickflip/kickflipThread.h"
-#include "kickflip/kickflipAction.h"
-#include "kickflip/kickflipResource.h"
-#include "kickflip/kickflipHashString.h"
+#include "kickflip/framework.h"
+#include "kickflip/SmartPointer.h"
+#include "kickflip/Thread.h"
+#include "kickflip/Action.h"
+#include "kickflip/Resource.h"
+#include "kickflip/HashString.h"
 #include <cstdio>
 #include <vector>
 

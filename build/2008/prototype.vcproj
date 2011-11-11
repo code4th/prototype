@@ -172,113 +172,137 @@
 			Name="kickflip"
 			>
 			<File
-				RelativePath="..\..\kickflip\kickflipAction.cpp"
+				RelativePath="..\..\kickflip\Action.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipAction.h"
+				RelativePath="..\..\kickflip\Action.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipDebugFont.cpp"
+				RelativePath="..\..\kickflip\Embedded.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipDebugFont.h"
+				RelativePath="..\..\kickflip\Embedded.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipEmbedded.cpp"
+				RelativePath="..\..\kickflip\FrameRate.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipEmbedded.h"
+				RelativePath="..\..\kickflip\FrameRate.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipFrameRate.cpp"
+				RelativePath="..\..\kickflip\Framework.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipFrameRate.h"
+				RelativePath="..\..\kickflip\Framework.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipFramework.cpp"
+				RelativePath="..\..\kickflip\GraphicDevice.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipFramework.h"
+				RelativePath="..\..\kickflip\GraphicDevice.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipGraphicDevice.cpp"
+				RelativePath="..\..\kickflip\GraphicShader.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipGraphicDevice.h"
+				RelativePath="..\..\kickflip\GraphicShader.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipGraphicShader.cpp"
+				RelativePath="..\..\kickflip\GraphicShaderObject.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipGraphicShader.h"
+				RelativePath="..\..\kickflip\GraphicShaderObject.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipGraphicShaderObject.cpp"
+				RelativePath="..\..\kickflip\HashString.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipGraphicShaderObject.h"
+				RelativePath="..\..\kickflip\InputCommand.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipHashString.h"
+				RelativePath="..\..\kickflip\InputCommand.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipInputCommand.cpp"
+				RelativePath="..\..\kickflip\InputDevice.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipInputCommand.h"
+				RelativePath="..\..\kickflip\InputDevice.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipInputDevice.cpp"
+				RelativePath="..\..\kickflip\Network.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipInputDevice.h"
+				RelativePath="..\..\kickflip\Network.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipResource.cpp"
+				RelativePath="..\..\kickflip\Resource.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipResource.h"
+				RelativePath="..\..\kickflip\Resource.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipSmartPointer.cpp"
+				RelativePath="..\..\kickflip\SmartPointer.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipSmartPointer.h"
+				RelativePath="..\..\kickflip\SmartPointer.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipThread.cpp"
+				RelativePath="..\..\kickflip\Thread.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\kickflip\kickflipThread.h"
+				RelativePath="..\..\kickflip\Thread.h"
 				>
 			</File>
+			<Filter
+				Name="Debug"
+				>
+				<File
+					RelativePath="..\..\kickflip\Debug\DebugFont.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\kickflip\Debug\DebugFont.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Socket"
+				>
+				<File
+					RelativePath="..\..\kickflip\Socket\SocketObject.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\kickflip\Socket\SocketObject.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="prototype"
