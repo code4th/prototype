@@ -33,17 +33,7 @@ namespace kickflip
 			}
 		}
 
-		int flag = 1;
-		int result = setsockopt(socket_,            /* 影響するソケット */
-			IPPROTO_TCP,     /* TCP レベルのオプション設定 */
-			TCP_NODELAY,     /* オプションの名前 */
-			(char *) &flag,  /* このキャストは歴史的な汚点 */
-			sizeof(int));    /* オプション値の長さ */
-		if (result < 0)
-		{
-			NET_TRACE( "NetObjectTCP TCP_NODELAY failed" );
-		}
-
+		NonDelay();
 
 		NET_TRACE( "NetObjectTCP(CLT) connected : %s\n", inet_ntoa( server.sin_addr ) );
 
@@ -102,19 +92,8 @@ namespace kickflip
 		}
 
 next:
-		unsigned long val=1;
-		//	ioctlsocket( m_kSocket, FIONBIO, &val );
-		int flag = 1;
-		int result = setsockopt(socket_,            /* 影響するソケット */
-			IPPROTO_TCP,     /* TCP レベルのオプション設定 */
-			TCP_NODELAY,     /* オプションの名前 */
-			(char *) &flag,  /* このキャストは歴史的な汚点 */
-			sizeof(int));    /* オプション値の長さ */
-		if (result < 0)
-		{
-			NET_TRACE( "NetObjectTCP TCP_NODELAY failed" );
-		}
-
+		SetBlock(false);
+		NonDelay();
 		NET_TRACE( "NetObjectTCP(CLT) Address connected : %s\n", inet_ntoa( server.sin_addr ) );
 
 		return true;

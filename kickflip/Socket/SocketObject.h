@@ -28,6 +28,28 @@ namespace kickflip
 		}
 
 		bool IsEnable(){ return INVALID_SOCKET!=socket_;}
+		bool SetBlock(bool _isBlock)
+		{
+			unsigned long val=1;
+			if(true == _isBlock) val = 0;
+			ioctlsocket( socket_, FIONBIO, &val );
+			return true;
+		}
+		bool NonDelay()
+		{
+			int flag = 1;
+			int result = setsockopt(socket_,            /* 影響するソケット */
+				IPPROTO_TCP,     /* TCP レベルのオプション設定 */
+				TCP_NODELAY,     /* オプションの名前 */
+				(char *) &flag,  /* このキャストは歴史的な汚点 */
+				sizeof(int));    /* オプション値の長さ */
+			if (result < 0){
+				NET_TRACE( "NetObjectTCP TCP_NODELAY failed" );
+				return false;
+			}
+			return true;
+		}
+
 
 	protected:
 		SOCKET	socket_;

@@ -284,6 +284,10 @@ namespace kickflip
 		{
 			WSACleanup();
 		}
+		bool Update()
+		{
+		}
+
 		bool SendData( NetObjectRPtr& rpToClient, const char* command, const msgpack::sbuffer& sbuf, NET_SEND_FLAG flag = NET_SEND_RELIABLE)
 		{
 			if(NULL == rpToClient)
@@ -315,9 +319,6 @@ namespace kickflip
 			return httpObject;
 		}
 
-		void Update()
-		{
-		}
 
 	};
 

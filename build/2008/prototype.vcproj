@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(DXSDK_DIR)\include&quot;;C:\work\prototype\msgpack\include"
+				AdditionalIncludeDirectories="&quot;$(DXSDK_DIR)\include&quot;;&quot;$(SolutionDir)..\..\msgpack\include&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -63,7 +63,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="msgpackd.lib ws2_32.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="C:\work\prototype\msgpack\lib"
+				AdditionalLibraryDirectories="&quot;$(SolutionDir)..\..\msgpack\lib&quot;"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				TargetMachine="1"
