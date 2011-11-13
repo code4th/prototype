@@ -31,6 +31,7 @@ namespace kickflip
 
 	protected:
 		SOCKET	socket_;
+
 	};
 
 	SmartPtr(TCPObject);

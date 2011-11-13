@@ -63,6 +63,8 @@ static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, c
 }
 void Prototype::ExecOnceBeforeUpdate()
 {
+	Network::HttpObjectRPtr httpObject = Network::Get()->GetHttpObject();
+	httpObject->Request("pma026.pmc.co.jp","GET /~olbaid_lobby/login.php?host HTTP/1.0\r\n\r\n");
 
 	{
         std::vector<std::string> vec;
@@ -72,15 +74,6 @@ void Prototype::ExecOnceBeforeUpdate()
         msgpack::sbuffer sbuf;
         msgpack::pack(sbuf, vec);
 
-		
-		{
-			std::string result = Network::Get()->HttpRequest("pma026.pmc.co.jp","GET /~olbaid_lobby/login.php?host HTTP/1.0\r\n\r\n");
-		}
-		{
-			std::string result = Network::Get()->HttpRequest("www.google.co.jp","GET / HTTP/1.0\r\n\r\n");
-		}
-
- 
         // deserialize it.
         msgpack::unpacked msg;
         msgpack::unpack(&msg, sbuf.data(), sbuf.size());
@@ -92,6 +85,8 @@ void Prototype::ExecOnceBeforeUpdate()
         std::vector<std::string> rvec;
         obj.convert(&rvec);
 	}
+
+	std::string result = httpObject->GetResult();
 
 	m_rpResouceManager = new ResourceManager();
 /*
