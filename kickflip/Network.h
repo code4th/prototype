@@ -105,21 +105,44 @@ namespace kickflip
 	};
 
 
-	class Network
+	SmartPtr(Network);
+	class Network :public ReferenceObject
 	{
-	private:
-		Network(){}
-		~Network(){}
 	public:
-		static Network& Get()
+		static NetworkRPtr Get()
 		{
-			static Network instance_;
+			static NetworkRPtr instance_ = NULL;
+			if(NULL == instance_) instance_ = new Network();
 			return instance_;
 		}
 	public:
 		typedef std::vector<NetObjectRPtr> NetClinetList;
 		NetClinetList netclient_list_;
+	private:
+		Network()
+		{
+			Initialize();
+		}
+		virtual ~Network()
+		{
+			Finalize();
+		}
 	public:
+		bool Initialize()
+		{
+			//	winsock初期化
+			WSAData wsaData;
+			if( WSAStartup( MAKEWORD( 2, 0 ), &wsaData ) )
+			{
+				NET_TRACE( "WSAStartup : %d\n", WSAGetLastError() );
+				return false;
+			}
+			return true;
+		}
+		void Finalize()
+		{
+			WSACleanup();
+		}
 		bool SendData( NetObjectRPtr& rpToClient, const char* command, const msgpack::sbuffer& sbuf, NET_SEND_FLAG flag = NET_SEND_RELIABLE)
 		{
 			if(NULL == rpToClient)
@@ -136,6 +159,38 @@ namespace kickflip
 
 			// 通常送信
 			return  rpToClient->pushData( command,  sbuf,  flag);
+		}
+		std::string HttpRequest(char* _http, char* _query)
+		{
+			std::string result("unKnown");
+			TCPObjectRPtr tcpObject = new TCPObject();
+			if(false == tcpObject->Open(_http,80)) return result;
+			int n = tcpObject->SendData(_query,strlen(_query));
+
+			if (n < 0) {
+				NET_TRACE("HttpRequest: send err %s\n",_query);
+				return result;
+			}
+
+			// サーバからのHTTPメッセージ受信
+			result.clear();
+			while (n > 0) {
+				char buf[64];
+				memset(buf, 0, sizeof(buf));
+				n = tcpObject->RecvData(buf, sizeof(buf)-1,0);
+				if (n < 0) {
+					NET_TRACE("HttpRequest: recv err %d\n", WSAGetLastError());
+					return result;
+				}
+				buf[n] = '\0';
+				result+=buf;
+
+				// 受信結果を表示
+				//			fwrite(buf, n, 1, stdout);
+			}
+
+			return result;
+
 		}
 
 	};

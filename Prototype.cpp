@@ -4,6 +4,7 @@
 #include "kickflip/Embedded.h"
 #include "kickflip/Debug/DebugFont.h"
 #include "kickflip/Thread.h"
+#include "kickflip/Network.h"
 
 
 
@@ -63,12 +64,22 @@ static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, c
 void Prototype::ExecOnceBeforeUpdate()
 {
 
+	{
         std::vector<std::string> vec;
         vec.push_back("Hello");
         vec.push_back("MessagePack");
         // serialize it into simple buffer.
         msgpack::sbuffer sbuf;
         msgpack::pack(sbuf, vec);
+
+		
+		{
+			std::string result = Network::Get()->HttpRequest("pma026.pmc.co.jp","GET /~olbaid_lobby/login.php?host HTTP/1.0\r\n\r\n");
+		}
+		{
+			std::string result = Network::Get()->HttpRequest("www.google.co.jp","GET / HTTP/1.0\r\n\r\n");
+		}
+
  
         // deserialize it.
         msgpack::unpacked msg;
@@ -80,6 +91,7 @@ void Prototype::ExecOnceBeforeUpdate()
         // convert it into statically typed object.
         std::vector<std::string> rvec;
         obj.convert(&rvec);
+	}
 
 	m_rpResouceManager = new ResourceManager();
 /*

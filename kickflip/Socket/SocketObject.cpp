@@ -63,8 +63,7 @@ namespace kickflip
 
 		if (INADDR_NONE == server.sin_addr.S_un.S_addr) {
 			// ïœä∑èoóàÇ»ÇØÇÍÇŒ
-			struct hostent *host;
-			host = gethostbyname(addr);
+			struct hostent *host = gethostbyname(addr);
 			if ( NULL == host ) {
 				if (WSAGetLastError() == WSAHOST_NOT_FOUND) {
 					NET_TRACE( "NetObjectTCP host not found : %s\n", addr );

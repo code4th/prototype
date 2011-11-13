@@ -2,11 +2,16 @@
 
 #include <winsock2.h>
 #include "../SmartPointer.h"
+#include <stdio.h>
 
 namespace kickflip
 {
-	#define NET_TRACE( ... )		do { } while ( false )
-	#define NET_TRACE_THIS( ... )	do { } while ( false )
+	#define NET_PRINT( ... )			printf( __VA_ARGS__ )
+
+	#define NET_TRACE( ... )		{ static unsigned int cnt = 0; NET_PRINT( "NetTrace(%d) : ", ++cnt );  NET_PRINT( __VA_ARGS__ ); NET_PRINT( "\n" ); }
+	#define NET_TRACE_THIS( ... )	{ static unsigned int cnt = 0; NET_PRINT( "NetTrace(%d) : (0x%x) : ", ++cnt, this );  NET_PRINT( __VA_ARGS__ ); NET_PRINT( "\n" ); }
+//	#define NET_TRACE( ... )		do { } while ( false )
+//	#define NET_TRACE_THIS( ... )	do { } while ( false )
 
 	SmartPtr(SocketObject);
 	class SocketObject : public ReferenceObject
