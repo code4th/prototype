@@ -274,6 +274,9 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,3,"deltaMicroSecond:(realtime:%d)",Time::GetRealDeltaTimeMicroSecond());
 	DebugPrint(0,4,"fps:%f(ave:%.1f)\n",Time::GetFPS(),Time::GetFPSAve());
 
+	Network::Get()->Update();
+
+
 	if(true == GamePad(0).IsPressed(InputDevice::GamePad::A))
 	{
 		m_rpActionController->ChangeAction(_H("Punch"));

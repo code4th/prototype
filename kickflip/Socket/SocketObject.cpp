@@ -1,10 +1,141 @@
 
 
 #include "SocketObject.h"
-
+//#include <iostream>
+#include <algorithm>
+#include <strstream>
 
 namespace kickflip
 {
+	void NetTrace( LPCSTR pszFormat, ...)
+	{
+		va_list	argp;
+		char pszBuf[256];
+		va_start(argp, pszFormat);
+		vsprintf_s( pszBuf, 256, pszFormat, argp);
+		va_end(argp);
+		OutputDebugString( pszBuf);
+	}
+
+	const char* WSAGetLastErrorMessage(const char* pcMessagePrefix, int nErrorID /* = 0 */)
+	{
+
+		//// WSAGetLastErrorMessage ////////////////////////////////////////////
+		// A function similar in spirit to Unix's perror() that tacks a canned 
+		// interpretation of the value of WSAGetLastError() onto the end of a
+		// passed string, separated by a ": ".  Generally, you should implement
+		// smarter error handling than this, but for default cases and simple
+		// programs, this function is sufficient.
+		//
+		// This function returns a pointer to an internal static buffer, so you
+		// must copy the data from this function before you call it again.  It
+		// follows that this function is also not thread-safe.
+
+		static struct ErrorEntry {
+			int nID;
+			const char* pcMessage;
+
+			ErrorEntry(int id, const char* pc = 0)
+				: nID(id)
+				, pcMessage(pc) 
+			{}
+
+			bool operator<(const ErrorEntry& rhs) 
+			{
+				return nID < rhs.nID;
+			}
+		} gaErrorList[] = {
+			ErrorEntry(0,                  "No error"),
+			ErrorEntry(WSAEINTR,           "Interrupted system call"),
+			ErrorEntry(WSAEBADF,           "Bad file number"),
+			ErrorEntry(WSAEACCES,          "Permission denied"),
+			ErrorEntry(WSAEFAULT,          "Bad address"),
+			ErrorEntry(WSAEINVAL,          "Invalid argument"),
+			ErrorEntry(WSAEMFILE,          "Too many open sockets"),
+			ErrorEntry(WSAEWOULDBLOCK,     "Operation would block"),
+			ErrorEntry(WSAEINPROGRESS,     "Operation now in progress"),
+			ErrorEntry(WSAEALREADY,        "Operation already in progress"),
+			ErrorEntry(WSAENOTSOCK,        "Socket operation on non-socket"),
+			ErrorEntry(WSAEDESTADDRREQ,    "Destination address required"),
+			ErrorEntry(WSAEMSGSIZE,        "Message too long"),
+			ErrorEntry(WSAEPROTOTYPE,      "Protocol wrong type for socket"),
+			ErrorEntry(WSAENOPROTOOPT,     "Bad protocol option"),
+			ErrorEntry(WSAEPROTONOSUPPORT, "Protocol not supported"),
+			ErrorEntry(WSAESOCKTNOSUPPORT, "Socket type not supported"),
+			ErrorEntry(WSAEOPNOTSUPP,      "Operation not supported on socket"),
+			ErrorEntry(WSAEPFNOSUPPORT,    "Protocol family not supported"),
+			ErrorEntry(WSAEAFNOSUPPORT,    "Address family not supported"),
+			ErrorEntry(WSAEADDRINUSE,      "Address already in use"),
+			ErrorEntry(WSAEADDRNOTAVAIL,   "Can't assign requested address"),
+			ErrorEntry(WSAENETDOWN,        "Network is down"),
+			ErrorEntry(WSAENETUNREACH,     "Network is unreachable"),
+			ErrorEntry(WSAENETRESET,       "Net connection reset"),
+			ErrorEntry(WSAECONNABORTED,    "Software caused connection abort"),
+			ErrorEntry(WSAECONNRESET,      "Connection reset by peer"),
+			ErrorEntry(WSAENOBUFS,         "No buffer space available"),
+			ErrorEntry(WSAEISCONN,         "Socket is already connected"),
+			ErrorEntry(WSAENOTCONN,        "Socket is not connected"),
+			ErrorEntry(WSAESHUTDOWN,       "Can't send after socket shutdown"),
+			ErrorEntry(WSAETOOMANYREFS,    "Too many references, can't splice"),
+			ErrorEntry(WSAETIMEDOUT,       "Connection timed out"),
+			ErrorEntry(WSAECONNREFUSED,    "Connection refused"),
+			ErrorEntry(WSAELOOP,           "Too many levels of symbolic links"),
+			ErrorEntry(WSAENAMETOOLONG,    "File name too long"),
+			ErrorEntry(WSAEHOSTDOWN,       "Host is down"),
+			ErrorEntry(WSAEHOSTUNREACH,    "No route to host"),
+			ErrorEntry(WSAENOTEMPTY,       "Directory not empty"),
+			ErrorEntry(WSAEPROCLIM,        "Too many processes"),
+			ErrorEntry(WSAEUSERS,          "Too many users"),
+			ErrorEntry(WSAEDQUOT,          "Disc quota exceeded"),
+			ErrorEntry(WSAESTALE,          "Stale NFS file handle"),
+			ErrorEntry(WSAEREMOTE,         "Too many levels of remote in path"),
+			ErrorEntry(WSASYSNOTREADY,     "Network system is unavailable"),
+			ErrorEntry(WSAVERNOTSUPPORTED, "Winsock version out of range"),
+			ErrorEntry(WSANOTINITIALISED,  "WSAStartup not yet called"),
+			ErrorEntry(WSAEDISCON,         "Graceful shutdown in progress"),
+			ErrorEntry(WSAHOST_NOT_FOUND,  "Host not found"),
+			ErrorEntry(WSANO_DATA,         "No host data of that type was found")
+		};
+		const int kNumMessages = sizeof(gaErrorList) / sizeof(ErrorEntry);
+		// List of Winsock error constants mapped to an interpretation string.
+		// Note that this list must remain sorted by the error constants'
+		// values, because we do a binary search on the list when looking up
+		// items.
+
+		// Build basic error string
+		static char acErrorBuffer[256];
+		std::ostrstream outs(acErrorBuffer, sizeof(acErrorBuffer));
+		outs << pcMessagePrefix << ": ";
+
+		// Tack appropriate canned message onto end of supplied message 
+		// prefix. Note that we do a binary search here: gaErrorList must be
+		// sorted by the error constant's value.
+		ErrorEntry* pEnd = gaErrorList + kNumMessages;
+		ErrorEntry Target(nErrorID ? nErrorID : WSAGetLastError());
+
+		struct cmp
+		{
+			inline bool operator ()(const ErrorEntry& lhs, const ErrorEntry& rhs) const
+			{
+			  return lhs.nID < rhs.nID;
+			}
+		};
+		ErrorEntry* it = std::lower_bound(gaErrorList, pEnd, Target,cmp());
+		if ((it != pEnd) && (it->nID == Target.nID)) {
+			outs << it->pcMessage;
+		}
+		else {
+			// Didn't find error in list, so make up a generic one
+			outs << "unknown error";
+		}
+		outs << " (" << Target.nID << ")";
+
+		// Finish error message off and return it.
+		outs << std::ends;
+		acErrorBuffer[sizeof(acErrorBuffer) - 1] = '\0';
+		return acErrorBuffer;
+	}
+
 
 	/////////////////////////////////////////////
 	/*TCP***************************************/
@@ -16,90 +147,117 @@ namespace kickflip
 		socket_ = socket(AF_INET, SOCK_STREAM, 0);
 		if( INVALID_SOCKET == socket_ ) return false;
 
-		struct sockaddr_in server;
-		server.sin_family = AF_INET;
-		server.sin_port = htons( port );
-		server.sin_addr.S_un.S_addr = addr;
+		//memcpy( server_, 0, sizeof( server_ ) );
 
-		if( 0 != connect( socket_, (struct sockaddr *)&server, sizeof( server ) )  )
-		{
-			if(WSAEISCONN == WSAGetLastError()){
-				NET_TRACE( "NetObjectTCP(CLT) connected : %s\n", inet_ntoa( server.sin_addr ) );
-				return true;
-			}else{
-				NET_TRACE( "NetObjectTCP connect : %d\n", WSAGetLastError() );
-				Close();
-				return false;
-			}
-		}
-
-		NonDelay();
-
-		NET_TRACE( "NetObjectTCP(CLT) connected : %s\n", inet_ntoa( server.sin_addr ) );
+		server_.sin_family = AF_INET;
+		server_.sin_port = htons( port );
+		server_.sin_addr.S_un.S_addr = addr;
 
 		return true;
 	}
+
 	bool TCPObject::Open( const char* addr, unsigned short port )
 	{
-		Close();
-		socket_ = socket(AF_INET, SOCK_STREAM, 0);
-		if( INVALID_SOCKET == socket_ ) return false;
-
-		struct sockaddr_in server;
-		server.sin_family = AF_INET;
-		server.sin_port = htons( port );
+		Open( static_cast< unsigned long>(0), port );
 		// とりあえず、アドレスを変換してみる
-		server.sin_addr.S_un.S_addr = inet_addr(addr);
+		server_.sin_addr.S_un.S_addr = inet_addr(addr);
 
-		if (INADDR_NONE == server.sin_addr.S_un.S_addr) {
+		if (INADDR_NONE == server_.sin_addr.S_un.S_addr) {
 			// 変換出来なければ
 			struct hostent *host = gethostbyname(addr);
 			if ( NULL == host ) {
 				if (WSAGetLastError() == WSAHOST_NOT_FOUND) {
-					NET_TRACE( "NetObjectTCP host not found : %s\n", addr );
+					NET_TRACE( "TCPObject host not found : %s\n", addr );
 				}
 				Close();
 				return false;
 			}
 
-			unsigned int **addrptr = (unsigned int **)host->h_addr_list;
-			while (*addrptr != NULL) {
-				server.sin_addr.S_un.S_addr = *(*addrptr);
-
-				if( 0 == connect( socket_, (struct sockaddr *)&server, sizeof( server ) )  )
-				{
-					goto next;
-				}
-
-				addrptr++;
-				// connectが失敗したら次のアドレスで試します
-			}
-
-			// connectが全て失敗した場合
-			if (*addrptr == NULL) {
-				NET_TRACE( "NetObjectTCP can't connect All list: %d\n", WSAGetLastError() );
-				Close();
-				return false;
-			}
+			addrptr_ = (unsigned int **)host->h_addr_list;
 		}
-
-
-		if( 0 != connect( socket_, (struct sockaddr *)&server, sizeof( server ) )  )
-		{
-			NET_TRACE( "NetObjectTCP can't connect : %d\n", WSAGetLastError() );
-			Close();
-			return false;
-		}
-
-next:
-		SetBlock(false);
-		NonDelay();
-		NET_TRACE( "NetObjectTCP(CLT) Address connected : %s\n", inet_ntoa( server.sin_addr ) );
 
 		return true;
 	}
+
+	bool TCPObject::Connect()
+	{
+		if(NULL != addrptr_)
+		{
+			while (true) 
+			{
+				if (*addrptr_ == NULL) {
+					NET_TRACE( "TCPObject can't connect All list: %s\n", WSAGetLastErrorMessage() );					
+					Close();
+					return false;
+				}
+
+				server_.sin_addr.S_un.S_addr = *(*addrptr_);
+				if( 0 == connect( socket_, (struct sockaddr *)&server_, sizeof( server_ ) )  )
+				{
+					break;
+				}
+
+				addrptr_++;
+			}
+		}else{
+			if( 0 != connect( socket_, (struct sockaddr *)&server_, sizeof( server_ ) )  )
+			{
+				if(WSAEISCONN != WSAGetLastError()){
+					NET_TRACE( "TCPObject can't connect : %s\n", WSAGetLastErrorMessage() );
+					Close();
+					return false;
+				}
+			}
+		}
+
+		//SetBlock(false);
+		NonDelay();
+		NET_TRACE( "TCPObject Address connected : %s\n", inet_ntoa( server_.sin_addr ) );
+
+		return true;
+	}
+
+	bool TCPObject::Bind()
+	{
+		if( 0 != bind( socket_, (struct sockaddr *)&server_, sizeof( server_ ) )  )
+		{
+			NET_TRACE( "TCPObject bind error: %s\n", WSAGetLastErrorMessage());
+			return false;
+		}
+		return true;
+	}
+
+	bool TCPObject::Listen(int _max_connect)
+	{
+		if( 0 != listen( socket_, _max_connect ) )
+		{
+			NET_TRACE( "TCPObject listen(%D) error : %s\n", _max_connect, WSAGetLastErrorMessage());
+			return false;
+		}
+		//SetBlock(false);
+		return true;
+	}
+
+	SOCKET TCPObject::Accept()
+	{
+		struct sockaddr_in in_addr;
+		int in_addr_len = sizeof(in_addr);
+
+		SOCKET new_sock = accept( socket_, (struct sockaddr*)&in_addr, &in_addr_len );
+		if( new_sock == INVALID_SOCKET || 0 > new_sock )
+		{
+			NET_TRACE( "TCPObject accept error: %s\n", WSAGetLastErrorMessage());
+			return INVALID_SOCKET;
+		}
+
+		NET_TRACE( "TCPObject accept: %s(%d)\n", inet_ntoa(in_addr.sin_addr), ntohs(in_addr.sin_port) );
+
+		return new_sock;
+	}
+
 	void TCPObject::Close()
 	{
+		addrptr_ = NULL;
 		if( INVALID_SOCKET == socket_ ) return;
 
 		char	DataBuf[1024];
@@ -108,6 +266,7 @@ next:
 		while( recv( socket_, DataBuf, sizeof( DataBuf ), 0 ) > 0 );
 		SocketObject::Close();
 	}
+
 	int TCPObject::SendData( const char* pData, unsigned int dataSize)
 	{
 		unsigned int totalSize = 0;
@@ -124,7 +283,7 @@ next:
 			else
 			{	//	本気(まじ)エラー
 				//printf( "error : 0x%x\n", WSAGetLastError() );
-				NET_TRACE( "NetObjectTCP SOCKET_ERROR : %d\n", WSAGetLastError() );
+				NET_TRACE( "TCPObject SOCKET_ERROR : %s\n", WSAGetLastErrorMessage() );
 				return -1;
 			}
 		}
@@ -152,7 +311,7 @@ next:
 			}
 			else
 			{	//	本気(まじ)エラー
-				NET_TRACE( "NetObjectTCP recv error : %d\n", WSAGetLastError() );
+				NET_TRACE( "TCPObject recv error : %s\n", WSAGetLastErrorMessage() );
 				free( pDataBuf );
 				return rcvSize;
 			}
@@ -172,7 +331,7 @@ next:
 		socket_ = socket( AF_INET, SOCK_DGRAM, 0 );
 		if( INVALID_SOCKET == socket_ )
 		{
-			NET_TRACE( "NetObjectUDP socket error: %d\n", WSAGetLastError() );
+			NET_TRACE( "UDPObject socket error: %s\n", WSAGetLastErrorMessage() );
 			return false;
 		}
 
@@ -183,7 +342,7 @@ next:
 
 		if( bind( socket_, (struct sockaddr *)&inaddr, sizeof( inaddr ) ) )
 		{
-			NET_TRACE( "NetObjectUDP bind error: %d\n", WSAGetLastError() );
+			NET_TRACE( "UDPObject bind error: %s\n", WSAGetLastErrorMessage() );
 			Close();
 			return false;
 		}
@@ -220,7 +379,7 @@ next:
 		}
 		else
 		{	//	本気(まじ)エラー
-			NET_TRACE( "NetObjectUDP recv error : %d\n", WSAGetLastError() );
+			NET_TRACE( "UDPObject recv error : %s\n", WSAGetLastErrorMessage() );
 		}
 
 		return rcvSize;

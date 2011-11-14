@@ -6,7 +6,14 @@
 
 namespace kickflip
 {
-	#define NET_PRINT( ... )			printf( __VA_ARGS__ )
+
+	const char* WSAGetLastErrorMessage(const char* pcMessagePrefix="", int nErrorID = 0);
+
+//	#define NET_PRINT( ... )			printf( __VA_ARGS__ )
+
+	void NetTrace( LPCSTR pszFormat, ...);
+	#define NET_PRINT( ... )			NetTrace( __VA_ARGS__ )
+	
 
 	#define NET_TRACE( ... )		{ static unsigned int cnt = 0; NET_PRINT( "NetTrace(%d) : ", ++cnt );  NET_PRINT( __VA_ARGS__ ); NET_PRINT( "\n" ); }
 	#define NET_TRACE_THIS( ... )	{ static unsigned int cnt = 0; NET_PRINT( "NetTrace(%d) : (0x%x) : ", ++cnt, this );  NET_PRINT( __VA_ARGS__ ); NET_PRINT( "\n" ); }
@@ -30,9 +37,11 @@ namespace kickflip
 		bool IsEnable(){ return INVALID_SOCKET!=socket_;}
 		bool SetBlock(bool _isBlock)
 		{
+
 			unsigned long val=1;
 			if(true == _isBlock) val = 0;
 			ioctlsocket( socket_, FIONBIO, &val );
+
 			return true;
 		}
 		bool NonDelay()
@@ -49,10 +58,13 @@ namespace kickflip
 			}
 			return true;
 		}
+		const SOCKET Socket() { return socket_;}
 
 
 	protected:
 		SOCKET	socket_;
+		struct sockaddr_in server_;
+		unsigned int **addrptr_;
 
 	};
 
@@ -68,6 +80,11 @@ namespace kickflip
 	public:
 		bool Open( unsigned long addr, unsigned short port );
 		bool Open( const char* addr, unsigned short port );
+		bool Bind();
+		bool Listen(int _max_connect = 5);
+		SOCKET Accept();
+
+		bool Connect();
 		virtual void Close();
 		int SendData( const char* pData, unsigned int dataSize);
 		int RecvData( char* pData, unsigned int dataSize, int flags);

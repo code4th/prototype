@@ -26,8 +26,7 @@ namespace kickflip
 		NetObject()
 			: ipAddr_(0)
 			, port_(0)
-			, tcp_rcv_(NULL)
-			, tcp_snd_(NULL)
+			, tcp_(NULL)
 			, udp_(NULL)
 			, isLocal_(false)
 			, isHost_(false)
@@ -36,17 +35,14 @@ namespace kickflip
 
 	private:
 
-		unsigned long		ipAddr_;			// IPアドレス
-		unsigned short		port_;				// 通信ポート
-		TCPObjectRPtr		tcp_rcv_;			// TCP通信受信用ソケット 
-		TCPObjectRPtr		tcp_snd_;			// TCP通信送信用ソケット
-		UDPObjectRPtr		udp_;				// UDP通信用ソケット
-		bool				isLocal_;			// ローカル(自分)か
-		bool				isHost_;			// ホスト(hosting)か これは、内部だけの情報で外部はこれを知る必要は無い
+		unsigned long		ipAddr_;		// IPアドレス
+		unsigned short		port_;			// 通信ポート
+		TCPObjectRPtr		tcp_;			// TCP通信用ソケット
+		UDPObjectRPtr		udp_;			// UDP通信用ソケット
+		bool				isLocal_;		// ローカル(自分)か
+		bool				isHost_;		// ホスト(hosting)か これは、内部だけの情報で外部はこれを知る必要は無い
 
 		std::string			name_;
-
-		msgpack::sbuffer	sbuf_;				// 受信バッファ
 
 	private:
 		SmartPtr(ChankData);
@@ -67,9 +63,9 @@ namespace kickflip
 		};
 		typedef std::vector<ChankDataRPtr> ChankList;
 
-		ChankList sendChankReliableList_;		// 信頼性あり
-		ChankList sendChankNonreliableList_;	// 信頼性なし
-		ChankList recvChankList;				// 通常の受信バッファ
+		ChankList sendChankReliableList_;		// 送信バッファ信頼性あり
+		ChankList sendChankNonreliableList_;	// 送信バッファ信頼性なし
+		ChankList recvChankList_;				// 受信バッファ
 
 	public:
 		
@@ -199,6 +195,7 @@ namespace kickflip
 			bool Request(char* _http, char* _query)
 			{
 				if(false == Open(_http,80)) return false;
+				if(false == Connect()) return false;
 				int n = SendData(_query,strlen(_query));
 
 				if (n < 0) {
@@ -219,8 +216,8 @@ namespace kickflip
 					memset(buf, 0, sizeof(buf));
 					n = RecvData(buf, sizeof(buf)-1,0);
 					if (n < 0) {
-						NET_TRACE("HttpRequest: recv err %d\n", WSAGetLastError());
-						return NULL;
+						NET_TRACE("HttpRequest: recv err %s\n", WSAGetLastErrorMessage());
+						return "";
 					}
 //					result+=buf;
 					sbuf_.write(buf,n);
@@ -234,6 +231,7 @@ namespace kickflip
 		typedef std::vector<HttpObjectRPtr> HttpObjectList;
 		NetObjectList netObject_list_;			// 永続的な接続
 		HttpObjectList httpObject_list_;		// http用のTCPコネクションリスト
+		TCPObjectRPtr listener_;
 
 		NetObjectRPtr netObject_me_;
 	private:
@@ -252,7 +250,7 @@ namespace kickflip
 			WSAData wsaData;
 			if( WSAStartup( MAKEWORD( 2, 0 ), &wsaData ) )
 			{
-				NET_TRACE( "WSAStartup : %d\n", WSAGetLastError() );
+				NET_TRACE( "WSAStartup : %s\n", WSAGetLastErrorMessage() );
 				return false;
 			}
 
@@ -261,8 +259,72 @@ namespace kickflip
 
 			netObject_me_->Open(NET_CONNECT_PORT);
 
+			listener_ = new TCPObject();
+			listener_->Open( INADDR_ANY, NET_CONNECT_PORT );
+			listener_->Bind();
+			listener_->Listen();
+
 			return true;
 		}
+
+		void Finalize()
+		{
+			WSACleanup();
+		}
+		bool Update()
+		{
+			fd_set readset_, writeset_, exset_;
+
+			FD_ZERO(&readset_);
+			FD_ZERO(&writeset_);
+			FD_ZERO(&exset_);
+
+			FD_SET(listener_->Socket(), &readset_);
+
+			for(NetObjectList::iterator ite = netObject_list_.begin(); netObject_list_.end()!=ite; ite++)
+			{
+				if(INVALID_SOCKET != (*ite)->tcp_->Socket())
+				{
+					FD_SET((*ite)->tcp_->Socket(), &readset_);
+					FD_SET((*ite)->tcp_->Socket(), &writeset_);
+				}
+			}
+			struct timeval to = {0,1};
+			int n = select(0, &readset_, &writeset_, &exset_, &to);
+
+			if (FD_ISSET(listener_->Socket(), &readset_)) {
+				SOCKET new_sock = listener_->Accept();
+				if (INVALID_SOCKET != new_sock) 
+				{
+					char text[] = "OLBAID_SERVER\nWelcome\n172.18.5.57\nIPList\n172.18.5.57\n";
+					send(new_sock,text,sizeof(text),0);
+/*
+					make_nonblocking(fd);
+					state[fd] = alloc_fd_state();
+					assert(state[fd]);
+*/
+				}
+			}
+
+			for(NetObjectList::iterator ite = netObject_list_.begin(); netObject_list_.end()!=ite; ite++)
+			{
+				TCPObject& tcp = *(TCPObject*)((*ite)->tcp_);
+				if(INVALID_SOCKET != tcp.Socket())
+				{
+					int r = 0;
+					if (FD_ISSET(tcp.Socket(), &readset_)) {
+//						r = tcp.RecvData();
+					}
+					if (FD_ISSET(tcp.Socket(), &writeset_)) {
+//						r = tcp.SendData();
+					}
+
+				}
+			}
+
+			return true;
+		}
+
 
 		NetObjectRPtr RegistClient(const unsigned long _ipAddr, const unsigned short _port)
 		{
@@ -280,13 +342,6 @@ namespace kickflip
 			return netObject;
 		}
 
-		void Finalize()
-		{
-			WSACleanup();
-		}
-		bool Update()
-		{
-		}
 
 		bool SendData( NetObjectRPtr& rpToClient, const char* command, const msgpack::sbuffer& sbuf, NET_SEND_FLAG flag = NET_SEND_RELIABLE)
 		{
