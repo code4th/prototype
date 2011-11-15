@@ -52,7 +52,7 @@ namespace kickflip
 			ChankData(const char* _command, const msgpack::sbuffer& _sbuf)
 			{
 				command_ = _command;
-				sbuf_ = _sbuf;
+				sbuf_.write(_sbuf.data(),_sbuf.size());
 			}
 			virtual ~ChankData(){}
 		private:
@@ -60,6 +60,9 @@ namespace kickflip
 		private:
 			std::string command_;
 			msgpack::sbuffer sbuf_;
+		public:
+			const char* GetSendBuffer() { return sbuf_.data();}
+			unsigned int GetSendBufferSize() { return sbuf_.size();}
 		};
 		typedef std::vector<ChankDataRPtr> ChankList;
 
@@ -90,6 +93,33 @@ namespace kickflip
 			return true;
 
 		}
+
+		bool sendDataChankbuffer()
+		{
+			for( ChankList::iterator ite = sendChankReliableList_.begin(); sendChankReliableList_.end() != ite; ite++ )
+			{
+				const char* data = (*ite)->GetSendBuffer();
+				unsigned int size = (*ite)->GetSendBufferSize();
+				tcp_->SendData(data, size);
+			}
+			sendChankReliableList_.clear();
+			return true;
+		}
+		bool recvDataChankbuffer()
+		{
+			msgpack::sbuffer rbuf;
+			if(false == tcp_->RecvData(rbuf, 0))
+			{
+				std::string res(rbuf.data(),rbuf.size());
+				NET_TRACE("recvDataChankbuffer error:%s",res.c_str());
+				return false;
+
+			}
+			std::string res(rbuf.data(),rbuf.size());
+			NET_TRACE("recvDataChankbuffer:%s",res.c_str());
+			return true;
+		}
+
 		bool sendDataNow( const char* _command, const msgpack::sbuffer& _sbuf, NET_SEND_FLAG _flag )
 		{
 
@@ -141,6 +171,24 @@ namespace kickflip
 			return true;
 
 		}
+		bool Connect(NetObjectRPtr connectNetObject, const char* _ipAddr, unsigned short _port)
+		{
+			tcp_ = new TCPObject();
+			if(false == tcp_->Open(_ipAddr,_port)) return false;
+			if(false == tcp_->Connect(false)) return false;
+			
+			ipAddr_ = tcp_->Sockaddr().sin_addr.s_addr;
+			port_ = ntohs(tcp_->Sockaddr().sin_port);
+			name_ = (inet_ntoa( *(struct in_addr*)&ipAddr_ ));
+			isLocal_ = false;
+
+			// 通信相手のUDPソケットは自分のモノを共通で使う
+			udp_ = connectNetObject->udp_;
+
+			return true;
+
+		}
+
 		bool Connect(NetObjectRPtr connectNetObject, unsigned long _ipAddr, unsigned short _port)
 		{
 			ipAddr_ = _ipAddr;
@@ -186,30 +234,45 @@ namespace kickflip
 			return instance_;
 		}
 	public:
+
 		SmartPtr(HttpObject);
 		class HttpObject : public TCPObject
 		{
 		private :
-			msgpack::sbuffer	sbuf_;				// 受信バッファ
+			msgpack::sbuffer	sbuf_;				// 送信バッファ
+			msgpack::sbuffer	rbuf_;				// 受信バッファ
+			// 一つのhttpオブジェクトで投げられるクエリはひとつだけ。なぜなら結果とひもづけるハンドルが必要だから
 		public:
-			bool Request(char* _http, char* _query)
+			bool Request(char* _http, char* _query, bool _isBlock = true)
 			{
 				if(false == Open(_http,80)) return false;
-				if(false == Connect()) return false;
-				int n = SendData(_query,strlen(_query));
-
-				if (n < 0) {
-					NET_TRACE("HttpRequest: send err %s\n",_query);
-					return false;
+				if(false == Connect(_isBlock)) return false;
+				if(_isBlock)
+				{
+					// すぐ送る
+					int n = SendData(_query, strlen(_query));
+					if (n < 0) {
+						NET_TRACE("HttpRequest: send err %s\n", _query);
+						return false;
+					}
+				}else{
+					// バッファに貯める
+					sbuf_.clear();
+					sbuf_.write(_query, strlen(_query));
 				}
 
 				return true;
 
 			}
+			bool Complete()
+			{
+				return true;
+			}
+
 			std::string GetResult()
 			{
 				// サーバからのHTTPメッセージ受信
-				sbuf_.clear();
+				rbuf_.clear();
 				int n = 1;
 				while (n > 0) {
 					char buf[64];
@@ -220,13 +283,25 @@ namespace kickflip
 						return "";
 					}
 //					result+=buf;
-					sbuf_.write(buf,n);
+					rbuf_.write(buf,n);
 				}
-				return std::string(sbuf_.data(),sbuf_.size());
+				return std::string(rbuf_.data(),rbuf_.size());
 
 			}
 
 		};
+
+	public:
+		HttpObjectRPtr GetHttpObject()
+		{
+			HttpObjectRPtr httpObject = new HttpObject();
+			if(NULL != httpObject)
+			{
+				httpObject_list_.push_back(httpObject);
+			}
+			return httpObject;
+		}
+
 		typedef std::vector<NetObjectRPtr> NetObjectList;
 		typedef std::vector<HttpObjectRPtr> HttpObjectList;
 		NetObjectList netObject_list_;			// 永続的な接続
@@ -296,8 +371,7 @@ namespace kickflip
 				SOCKET new_sock = listener_->Accept();
 				if (INVALID_SOCKET != new_sock) 
 				{
-					char text[] = "OLBAID_SERVER\nWelcome\n172.18.5.57\nIPList\n172.18.5.57\n";
-					send(new_sock,text,sizeof(text),0);
+					// accept
 /*
 					make_nonblocking(fd);
 					state[fd] = alloc_fd_state();
@@ -305,18 +379,18 @@ namespace kickflip
 */
 				}
 			}
-
+			// 送受信
 			for(NetObjectList::iterator ite = netObject_list_.begin(); netObject_list_.end()!=ite; ite++)
 			{
-				TCPObject& tcp = *(TCPObject*)((*ite)->tcp_);
+				TCPObject& tcp = *static_cast<TCPObject*>((*ite)->tcp_);
 				if(INVALID_SOCKET != tcp.Socket())
 				{
 					int r = 0;
 					if (FD_ISSET(tcp.Socket(), &readset_)) {
-//						r = tcp.RecvData();
+						(*ite)->recvDataChankbuffer();
 					}
 					if (FD_ISSET(tcp.Socket(), &writeset_)) {
-//						r = tcp.SendData();
+						(*ite)->sendDataChankbuffer();
 					}
 
 				}
@@ -329,10 +403,21 @@ namespace kickflip
 		NetObjectRPtr RegistClient(const unsigned long _ipAddr, const unsigned short _port)
 		{
 			if(NULL == netObject_me_) return NULL;
-			for(NetObjectList::iterator ite = netObject_list_.begin(); netObject_list_.end()!=ite; ite++)
-			{
-				if(_ipAddr == (*ite)->ipAddr_) return (*ite);
-			}
+
+			NetObjectRPtr netObject = new NetObject();
+			if(NULL == netObject) return NULL;
+
+			// コネクトする
+			if(false == netObject->Connect(netObject_me_, _ipAddr, _port)) return NULL;
+			netObject_list_.push_back(netObject);
+			return netObject;
+		}
+
+		NetObjectRPtr RegistClient(const char* _ipAddr, const unsigned short _port)
+		{
+			if(NULL == netObject_me_) return NULL;
+
+			// 接続先のオブジェクトを生成
 			NetObjectRPtr netObject = new NetObject();
 			if(NULL == netObject) return NULL;
 
@@ -343,7 +428,7 @@ namespace kickflip
 		}
 
 
-		bool SendData( NetObjectRPtr& rpToClient, const char* command, const msgpack::sbuffer& sbuf, NET_SEND_FLAG flag = NET_SEND_RELIABLE)
+		bool SendData( NetObjectRPtr rpToClient, const char* command, const msgpack::sbuffer& sbuf, NET_SEND_FLAG flag = NET_SEND_RELIABLE)
 		{
 			if(NULL == rpToClient)
 			{
@@ -361,18 +446,6 @@ namespace kickflip
 			return  rpToClient->pushData( command,  sbuf,  flag);
 		}
 
-	public:
-
-		HttpObjectRPtr GetHttpObject()
-		{
-			HttpObjectRPtr httpObject = new HttpObject();
-			if(NULL != httpObject)
-			{
-				httpObject_list_.push_back(httpObject);
-			}
-
-			return httpObject;
-		}
 
 
 	};

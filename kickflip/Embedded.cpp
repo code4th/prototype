@@ -2,9 +2,50 @@
 
 #include "Embedded.h"
 #include <deque>
+#include <string>
+#include <vector>
 
 namespace kickflip
 {
+
+	std::string cformat( char *format, ...)
+	{
+		int bufsize = 1024; // 適当なサイズ
+		std::vector<char>   buff(bufsize);
+		va_list args;
+
+		// 適当なバッファサイズで先ずは、vsnprintfを試す。
+		// 出力がバッファサイズ以上の場合、VC++ .NET 2003の場合は -1、
+		// glibc2.1以降は、書き込みに必要なサイズを返す。
+		va_start(args, format);
+		int vssize = vsnprintf_s( &buff[0], bufsize, bufsize, format, args);
+		va_end(args);
+
+		// vsnprintfが成功した場合終了する。
+		if ( vssize >= 0 && vssize < bufsize ) {
+			buff.resize(vssize);
+			return std::string( buff.begin(), buff.end() );
+		}
+
+#ifdef _WIN32
+		// VC++ .NET 2003 書き込みに必要なサイズを取得する。
+		va_start(args, format);
+		vssize = _vscprintf( format, args);
+		va_end(args);
+#endif
+
+		if ( vssize < 0 ) throw std::runtime_error(format);
+
+		// サイズを再割り当てし、再度試す
+		buff.resize(vssize + 1);
+		va_start(args, format);
+		vssize = vsnprintf_s( &buff[0], vssize + 1, vssize + 1, format, args);
+		va_end(args);
+		if ( vssize < 0 ) throw std::runtime_error(format);
+		buff.resize(vssize);
+		return std::string( buff.begin(), buff.end() );
+	}
+
 	namespace Time
 	{
 		LARGE_INTEGER m_iFrequency;

@@ -22,6 +22,9 @@ namespace kickflip
 #define STATIC_ASSERT_JOIN2(X, Y) X ## Y
 #define STATIC_ASSERT(cond) enum { STATIC_ASSERT_JOIN(static_assertion_helper_,__LINE__) = sizeof(struct { char x[(cond) ? 1 : -1]; }) }
 
+	std::string cformat( char *format, ...);
+
+
 	namespace Time
 	{
 		void Reset();

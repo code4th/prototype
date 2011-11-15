@@ -3,6 +3,8 @@
 #include <winsock2.h>
 #include "../SmartPointer.h"
 #include <stdio.h>
+#include <tchar.h>
+#include <msgpack.hpp>
 
 namespace kickflip
 {
@@ -11,12 +13,16 @@ namespace kickflip
 
 //	#define NET_PRINT( ... )			printf( __VA_ARGS__ )
 
-	void NetTrace( LPCSTR pszFormat, ...);
-	#define NET_PRINT( ... )			NetTrace( __VA_ARGS__ )
-	
+#define NET_PRINT( str, ... ) \
+	{ \
+		TCHAR c[2048*10]; \
+		_stprintf_s( c, str, __VA_ARGS__ ); \
+		OutputDebugString( c ); \
+	}	
 
-	#define NET_TRACE( ... )		{ static unsigned int cnt = 0; NET_PRINT( "NetTrace(%d) : ", ++cnt );  NET_PRINT( __VA_ARGS__ ); NET_PRINT( "\n" ); }
-	#define NET_TRACE_THIS( ... )	{ static unsigned int cnt = 0; NET_PRINT( "NetTrace(%d) : (0x%x) : ", ++cnt, this );  NET_PRINT( __VA_ARGS__ ); NET_PRINT( "\n" ); }
+
+	#define NET_TRACE( ... )		{ static unsigned int cnt = 0; NET_PRINT( "NetTrace(%d) %s(%d): ", ++cnt, __FILE__,__LINE__);  NET_PRINT( __VA_ARGS__ ); NET_PRINT( "\n" ); }
+	#define NET_TRACE_THIS( ... )	{ static unsigned int cnt = 0; NET_PRINT( "NetTrace(%d) %s(%d): (0x%x) : ", ++cnt, __FILE__,__LINE__, this );  NET_PRINT( __VA_ARGS__ ); NET_PRINT( "\n" ); }
 //	#define NET_TRACE( ... )		do { } while ( false )
 //	#define NET_TRACE_THIS( ... )	do { } while ( false )
 
@@ -59,11 +65,12 @@ namespace kickflip
 			return true;
 		}
 		const SOCKET Socket() { return socket_;}
+		const struct sockaddr_in& Sockaddr() { return sockaddr_in_;}
 
 
 	protected:
 		SOCKET	socket_;
-		struct sockaddr_in server_;
+		struct sockaddr_in sockaddr_in_;
 		unsigned int **addrptr_;
 
 	};
@@ -84,10 +91,11 @@ namespace kickflip
 		bool Listen(int _max_connect = 5);
 		SOCKET Accept();
 
-		bool Connect();
+		bool Connect(bool _isBlock = true);
 		virtual void Close();
 		int SendData( const char* pData, unsigned int dataSize);
 		int RecvData( char* pData, unsigned int dataSize, int flags);
+		bool RecvData( msgpack::sbuffer& _buf, int _flags);
 	};
 
 	SmartPtr(UDPObject);

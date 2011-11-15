@@ -63,8 +63,14 @@ static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, c
 }
 void Prototype::ExecOnceBeforeUpdate()
 {
+	Network::Get();
+
 	Network::HttpObjectRPtr httpObject = Network::Get()->GetHttpObject();
-	httpObject->Request("pma026.pmc.co.jp","GET /~olbaid_lobby/login.php?host HTTP/1.0\r\n\r\n");
+	httpObject->Request("pma026.pmc.co.jp","GET /~olbaid_lobby/login.php?host HTTP/1.0\r\n\r\n", true);
+
+	/*
+		http://ec2-175-41-224-156.ap-northeast-1.compute.amazonaws.com:7000/
+	*/
 
 	{
         std::vector<std::string> vec;
@@ -86,7 +92,12 @@ void Prototype::ExecOnceBeforeUpdate()
         obj.convert(&rvec);
 	}
 
+	while(!httpObject->Complete());
 	std::string result = httpObject->GetResult();
+
+//	Network::Get()->RegistClient("ec2-175-41-224-156.ap-northeast-1.compute.amazonaws.com",7000);
+	Network::Get()->RegistClient("ec2-175-41-224-156.ap-northeast-1.compute.amazonaws.com",7000);
+
 
 	m_rpResouceManager = new ResourceManager();
 /*
@@ -273,6 +284,21 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,2,"deltaMicroSecond:(frame:%d)",Time::GetFrameDeltaTimeMicroSecond());
 	DebugPrint(0,3,"deltaMicroSecond:(realtime:%d)",Time::GetRealDeltaTimeMicroSecond());
 	DebugPrint(0,4,"fps:%f(ave:%.1f)\n",Time::GetFPS(),Time::GetFPSAve());
+
+	{
+		static int cnt=0;
+		cnt++;
+		std::string message;
+		for(int i=0; i<100;i++)
+		{
+			message+=cformat("%d(%d)",cnt,i);
+		}
+
+		msgpack::sbuffer buf;
+		buf.write(message.c_str(),message.length());
+
+		Network::Get()->SendData(NULL,"message",buf);
+	}
 
 	Network::Get()->Update();
 

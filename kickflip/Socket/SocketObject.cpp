@@ -7,16 +7,6 @@
 
 namespace kickflip
 {
-	void NetTrace( LPCSTR pszFormat, ...)
-	{
-		va_list	argp;
-		char pszBuf[256];
-		va_start(argp, pszFormat);
-		vsprintf_s( pszBuf, 256, pszFormat, argp);
-		va_end(argp);
-		OutputDebugString( pszBuf);
-	}
-
 	const char* WSAGetLastErrorMessage(const char* pcMessagePrefix, int nErrorID /* = 0 */)
 	{
 
@@ -147,11 +137,11 @@ namespace kickflip
 		socket_ = socket(AF_INET, SOCK_STREAM, 0);
 		if( INVALID_SOCKET == socket_ ) return false;
 
-		//memcpy( server_, 0, sizeof( server_ ) );
+		//memcpy( sockaddr_in_, 0, sizeof( sockaddr_in_ ) );
 
-		server_.sin_family = AF_INET;
-		server_.sin_port = htons( port );
-		server_.sin_addr.S_un.S_addr = addr;
+		sockaddr_in_.sin_family = AF_INET;
+		sockaddr_in_.sin_port = htons( port );
+		sockaddr_in_.sin_addr.S_un.S_addr = addr;
 
 		return true;
 	}
@@ -160,9 +150,9 @@ namespace kickflip
 	{
 		Open( static_cast< unsigned long>(0), port );
 		// とりあえず、アドレスを変換してみる
-		server_.sin_addr.S_un.S_addr = inet_addr(addr);
+		sockaddr_in_.sin_addr.S_un.S_addr = inet_addr(addr);
 
-		if (INADDR_NONE == server_.sin_addr.S_un.S_addr) {
+		if (INADDR_NONE == sockaddr_in_.sin_addr.S_un.S_addr) {
 			// 変換出来なければ
 			struct hostent *host = gethostbyname(addr);
 			if ( NULL == host ) {
@@ -179,7 +169,7 @@ namespace kickflip
 		return true;
 	}
 
-	bool TCPObject::Connect()
+	bool TCPObject::Connect(bool _isBlock)
 	{
 		if(NULL != addrptr_)
 		{
@@ -191,8 +181,8 @@ namespace kickflip
 					return false;
 				}
 
-				server_.sin_addr.S_un.S_addr = *(*addrptr_);
-				if( 0 == connect( socket_, (struct sockaddr *)&server_, sizeof( server_ ) )  )
+				sockaddr_in_.sin_addr.S_un.S_addr = *(*addrptr_);
+				if( 0 == connect( socket_, (struct sockaddr *)&sockaddr_in_, sizeof( sockaddr_in_ ) )  )
 				{
 					break;
 				}
@@ -200,7 +190,7 @@ namespace kickflip
 				addrptr_++;
 			}
 		}else{
-			if( 0 != connect( socket_, (struct sockaddr *)&server_, sizeof( server_ ) )  )
+			if( 0 != connect( socket_, (struct sockaddr *)&sockaddr_in_, sizeof( sockaddr_in_ ) )  )
 			{
 				if(WSAEISCONN != WSAGetLastError()){
 					NET_TRACE( "TCPObject can't connect : %s\n", WSAGetLastErrorMessage() );
@@ -210,16 +200,16 @@ namespace kickflip
 			}
 		}
 
-		//SetBlock(false);
+		SetBlock(_isBlock);
 		NonDelay();
-		NET_TRACE( "TCPObject Address connected : %s\n", inet_ntoa( server_.sin_addr ) );
+		NET_TRACE( "TCPObject Address connected : %s\n", inet_ntoa( sockaddr_in_.sin_addr ) );
 
 		return true;
 	}
 
 	bool TCPObject::Bind()
 	{
-		if( 0 != bind( socket_, (struct sockaddr *)&server_, sizeof( server_ ) )  )
+		if( 0 != bind( socket_, (struct sockaddr *)&sockaddr_in_, sizeof( sockaddr_in_ ) )  )
 		{
 			NET_TRACE( "TCPObject bind error: %s\n", WSAGetLastErrorMessage());
 			return false;
@@ -234,7 +224,7 @@ namespace kickflip
 			NET_TRACE( "TCPObject listen(%D) error : %s\n", _max_connect, WSAGetLastErrorMessage());
 			return false;
 		}
-		//SetBlock(false);
+		SetBlock(false);
 		return true;
 	}
 
@@ -300,26 +290,72 @@ namespace kickflip
 		{
 			int rcvSize = recv( socket_, pDataBuf + totalSize, dataSize - totalSize, flags );
 
-			if( rcvSize == 0 )
+			switch(rcvSize)
 			{
+			case 0:
+				// 受信終了
+				goto nextState;
+
+			case SOCKET_ERROR:
+				{
+					if(WSAEWOULDBLOCK == WSAGetLastError())
+					{
+						goto nextState;
+					}else{
+						// ノンブロックの弊害
+						NET_TRACE( "TCPObject recv error : %s\n", WSAGetLastErrorMessage() );
+						free( pDataBuf );
+						return rcvSize;
+					}
+				}
+				break;
+			default:
+				// 受信中
+				totalSize += rcvSize;
 				break;
 			}
-			else if( SOCKET_ERROR != rcvSize )
-			{	//	受信OK
-				//printf( "recvFrom %s\n", inet_ntoa( from.sin_addr ) );
-				totalSize += rcvSize;
-			}
-			else
-			{	//	本気(まじ)エラー
-				NET_TRACE( "TCPObject recv error : %s\n", WSAGetLastErrorMessage() );
-				free( pDataBuf );
-				return rcvSize;
-			}
 		}
+nextState:
 		memcpy( pData, pDataBuf, totalSize );
 		free( pDataBuf );
 
 		return totalSize;
+	}
+
+	bool TCPObject::RecvData( msgpack::sbuffer& _buf, int _flags)
+	{
+		while( true )
+		{
+			char buf[1024];
+			int rcvSize = recv( socket_, buf, sizeof(buf), _flags );
+
+			switch(rcvSize)
+			{
+			case 0:
+				// 受信終了
+				_buf.write(buf,rcvSize);
+				return true;
+
+			case SOCKET_ERROR:
+				{
+					if(WSAEWOULDBLOCK == WSAGetLastError())
+					{
+						// ノンブロックの弊害
+						return true;
+					}else{
+						NET_TRACE( "TCPObject recv error : %s\n", WSAGetLastErrorMessage() );
+						return false;
+					}
+				}
+				break;
+			default:
+				// 受信中
+				_buf.write(buf,rcvSize);
+				break;
+			}
+		}
+
+		return true;
 	}
 
 	/////////////////////////////////////////////
