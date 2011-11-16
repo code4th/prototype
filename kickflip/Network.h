@@ -68,14 +68,15 @@ namespace kickflip
 
 		ChankList sendChankReliableList_;		// 送信バッファ信頼性あり
 		ChankList sendChankNonreliableList_;	// 送信バッファ信頼性なし
-		ChankList recvChankList_;				// 受信バッファ
+		ChankList recvChankReliableList_;		// 受信バッファ信頼性あり
+		ChankList recvChankNonreliableList_;	// 受信バッファ信頼性なし
 
 	public:
 		
 
 	private:
 		friend class Network;
-		bool pushData( const char* _command, const msgpack::sbuffer& _sbuf, NET_SEND_FLAG _flag )
+		bool pushDatatoChankbuffer( const char* _command, const msgpack::sbuffer& _sbuf, NET_SEND_FLAG _flag )
 		{
 			// 通常の送信はローカルにはしない
 			if(true == IsLocal()) return true;
@@ -94,7 +95,7 @@ namespace kickflip
 
 		}
 
-		bool sendDataChankbuffer()
+		bool sendDatafromChankbuffer()
 		{
 			for( ChankList::iterator ite = sendChankReliableList_.begin(); sendChankReliableList_.end() != ite; ite++ )
 			{
@@ -105,7 +106,7 @@ namespace kickflip
 			sendChankReliableList_.clear();
 			return true;
 		}
-		bool recvDataChankbuffer()
+		bool recvDatafromChankbuffer()
 		{
 			msgpack::sbuffer rbuf;
 			if(false == tcp_->RecvData(rbuf, 0))
@@ -117,108 +118,67 @@ namespace kickflip
 			}
 			std::string res(rbuf.data(),rbuf.size());
 			NET_TRACE("recvDataChankbuffer:%s",res.c_str());
+			ChankDataRPtr chank = new ChankData("dummy",rbuf);
+			recvChankReliableList_.push_back(chank);
 			return true;
 		}
 
-		bool sendDataNow( const char* _command, const msgpack::sbuffer& _sbuf, NET_SEND_FLAG _flag )
-		{
-
-		}
-		bool sendDataTCP( const char* _command, const msgpack::sbuffer& _sbuf, NET_SEND_FLAG _flag )
-		{
-//			TCPSndObject_->SendData();
-		}
 
 	public:
 		bool IsLocal() {return isLocal_;}
 		const std::string& GetName(){ return name_;}
 
-		bool Open( unsigned short _port )
+		bool Open( unsigned long _ipAddr, unsigned short _port )
 		{
-			// まず自分のNetObjectを作成
-			unsigned long ipAddr = 0;
+			tcp_ = new TCPObject();
+			if(false == tcp_->Open(_ipAddr,_port))
 			{
-				// 自分のIPアドレスを得る
-				char name[256];
-				int re = gethostname(name, sizeof(name));
-				if( 0 != re ) return false;
-
-				PHOSTENT hostinfo = gethostbyname(name);
-				if( NULL == hostinfo ) return false;
-				ipAddr = *(unsigned long*)((struct in_addr *)*hostinfo->h_addr_list);
-			}
-
-			ipAddr_ = ipAddr;
-			port_ = _port;
-
-			name_ = (inet_ntoa( *(struct in_addr*)&ipAddr_ ));
-
-			isLocal_ = true;
-
-			//	TCPの初期化はいらない
-
-			//	UDP用初期化
-				// 自分自身用のUDPソケットの作成
-			udp_ = new UDPObject();
-			if(NULL == udp_) return false;
-
-			if( false == udp_->Open( port_ ) )
-			{
-				NET_TRACE( "UDPSocket Initialization failed!\n" );
+				tcp_ = NULL;
 				return false;
 			}
-
 			return true;
 
 		}
-		bool Connect(NetObjectRPtr connectNetObject, const char* _ipAddr, unsigned short _port)
+		bool Open( const char* _ipAddr, unsigned short _port )
 		{
 			tcp_ = new TCPObject();
-			if(false == tcp_->Open(_ipAddr,_port)) return false;
-			if(false == tcp_->Connect(false)) return false;
+			if(false == tcp_->Open(_ipAddr,_port))
+			{
+				tcp_ = NULL;
+				return false;
+			}
+			return true;
+
+		}
+		bool Connect(NetObjectRPtr connectNetObject)
+		{
+			if(NULL == tcp_) return false;
+			if(NULL != connectNetObject)
+				if(false == tcp_->Connect(false)) return false;
 			
 			ipAddr_ = tcp_->Sockaddr().sin_addr.s_addr;
 			port_ = ntohs(tcp_->Sockaddr().sin_port);
 			name_ = (inet_ntoa( *(struct in_addr*)&ipAddr_ ));
-			isLocal_ = false;
 
-			// 通信相手のUDPソケットは自分のモノを共通で使う
-			udp_ = connectNetObject->udp_;
+			if(NULL != connectNetObject)
+			{
+				// 通信相手のUDPソケットは自分のモノを共通で使う
+				isLocal_ = false;
+				udp_ = connectNetObject->udp_;
+			}else{
+				// ローカルにだけ作成
+				isLocal_ = true;
+				udp_ = new UDPObject();
+				if( false == udp_->Open( port_ ) )
+				{
+					udp_ = NULL;
+					NET_TRACE( "UDPSocket Initialization failed!\n" );
+					return false;
+				}
+			}
 
 			return true;
 
-		}
-
-		bool Connect(NetObjectRPtr connectNetObject, unsigned long _ipAddr, unsigned short _port)
-		{
-			ipAddr_ = _ipAddr;
-			port_ = _port;
-
-			name_ = (inet_ntoa( *(struct in_addr*)&ipAddr_ ));
-
-			isLocal_ = false;
-
-#if 0
-			// 受信ソケット
-			/* 受信ソケットはAccepterから作られるソケットを使うため
-			インスタンスだけを作っておきSetSocketにて代入される*/
-			tcp_rcv_ = new TCPObject();
-			if(NULL == tcp_rcv_) return false;
-			tcp_rcv_->Open();
-
-
-			// 送信ソケット
-			/* 送信ソケットは自らのタイミングでConnectして作成する為初期化しておく*/
-			tcp_snd_  = new TCPObject();
-			if(NULL == tcp_snd_) return false;
-			if( false == tcp_snd_->Open( INADDR_ANY, port_ ) )
-			{
-				NET_TRACE( "TCPSrvSocket Initialization failed!\n" );
-				return false;
-			}
-#endif
-			// 通信相手のUDPソケットは自分のモノを共通で使う
-			udp_ = connectNetObject->udp_;
 		}
 	};
 
@@ -226,6 +186,13 @@ namespace kickflip
 	SmartPtr(Network);
 	class Network :public ReferenceObject
 	{
+	private:
+		SmartPtr(Finalizer);
+		class Finalizer :public ReferenceObject
+		{
+			virtual ~Finalizer(){};
+		};
+		FinalizerRPtr finalizer_;
 	public:
 		static NetworkRPtr Get()
 		{
@@ -234,65 +201,81 @@ namespace kickflip
 			return instance_;
 		}
 	public:
-
 		SmartPtr(HttpObject);
 		class HttpObject : public TCPObject
 		{
 		private :
+			friend class Network;
+			enum MODE{
+				MODE_UNKNOWN,
+				MODE_INIT,
+				MODE_SEND,
+				MODE_RECV,
+				MODE_FINISH,
+			};
+			MODE mode_;
 			msgpack::sbuffer	sbuf_;				// 送信バッファ
 			msgpack::sbuffer	rbuf_;				// 受信バッファ
-			// 一つのhttpオブジェクトで投げられるクエリはひとつだけ。なぜなら結果とひもづけるハンドルが必要だから
+			HttpObject()
+				: mode_(MODE_UNKNOWN)
+			{}
 		public:
+			// 一つのhttpオブジェクトで投げられるクエリはひとつだけ。なぜなら結果とひもづけるハンドルが必要だから
 			bool Request(char* _http, char* _query, bool _isBlock = true)
 			{
+				if(MODE_UNKNOWN != mode_) return false;
 				if(false == Open(_http,80)) return false;
 				if(false == Connect(_isBlock)) return false;
+				
+				// 送る内容をバッファに
+				sbuf_.clear();
+				sbuf_.write(_query,strlen(_query));
+				mode_ = MODE_INIT;
 				if(_isBlock)
 				{
 					// すぐ送る
-					int n = SendData(_query, strlen(_query));
-					if (n < 0) {
-						NET_TRACE("HttpRequest: send err %s\n", _query);
-						return false;
-					}
-				}else{
-					// バッファに貯める
-					sbuf_.clear();
-					sbuf_.write(_query, strlen(_query));
+					sendDatafromBuffer();
+					recvDatafromBuffer();
 				}
 
 				return true;
 
+			}
+			bool sendDatafromBuffer()
+			{
+				if(MODE_INIT != mode_) return false;
+				SendData(sbuf_.data(), sbuf_.size());
+				mode_ = MODE_SEND;
+				return true;
+			}
+			bool recvDatafromBuffer()
+			{
+				if(MODE_SEND != mode_) return false;
+				if(false == RecvData(rbuf_, 0))
+				{
+					NET_TRACE("recvDataChankbuffer error:%s",std::string(rbuf_.data(),rbuf_.size()).c_str());
+					return false;
+				}
+
+				NET_TRACE("recvDataChankbuffer:%s",std::string(rbuf_.data(),rbuf_.size()).c_str());
+				mode_ = MODE_RECV;
+				return true;
+			}
+			std::string GetResult()
+			{
+				if(MODE_RECV == mode_) mode_ = MODE_FINISH;
+				return std::string(rbuf_.data(),rbuf_.size());
 			}
 			bool Complete()
 			{
-				return true;
+				return (MODE_RECV == mode_);
 			}
 
-			std::string GetResult()
-			{
-				// サーバからのHTTPメッセージ受信
-				rbuf_.clear();
-				int n = 1;
-				while (n > 0) {
-					char buf[64];
-					memset(buf, 0, sizeof(buf));
-					n = RecvData(buf, sizeof(buf)-1,0);
-					if (n < 0) {
-						NET_TRACE("HttpRequest: recv err %s\n", WSAGetLastErrorMessage());
-						return "";
-					}
-//					result+=buf;
-					rbuf_.write(buf,n);
-				}
-				return std::string(rbuf_.data(),rbuf_.size());
-
-			}
 
 		};
 
 	public:
-		HttpObjectRPtr GetHttpObject()
+		HttpObjectWPtr GetHttpObject()
 		{
 			HttpObjectRPtr httpObject = new HttpObject();
 			if(NULL != httpObject)
@@ -313,11 +296,10 @@ namespace kickflip
 		Network()
 		{
 			Initialize();
+			// 最後に作ったオブジェクトで最後に処理を行う。
+			finalizer_ = new Finalizer();
 		}
-		virtual ~Network()
-		{
-			Finalize();
-		}
+		virtual ~Network(){WSACleanup();}
 	public:
 		bool Initialize()
 		{
@@ -331,8 +313,8 @@ namespace kickflip
 
 			// 自分は特別に追加する
 			netObject_me_ = new NetObject();
-
-			netObject_me_->Open(NET_CONNECT_PORT);
+			netObject_me_->Open(GetMyAddr(), NET_CONNECT_PORT);
+			netObject_me_->Connect(NULL);
 
 			listener_ = new TCPObject();
 			listener_->Open( INADDR_ANY, NET_CONNECT_PORT );
@@ -342,10 +324,6 @@ namespace kickflip
 			return true;
 		}
 
-		void Finalize()
-		{
-			WSACleanup();
-		}
 		bool Update()
 		{
 			fd_set readset_, writeset_, exset_;
@@ -356,6 +334,7 @@ namespace kickflip
 
 			FD_SET(listener_->Socket(), &readset_);
 
+			// tcp
 			for(NetObjectList::iterator ite = netObject_list_.begin(); netObject_list_.end()!=ite; ite++)
 			{
 				if(INVALID_SOCKET != (*ite)->tcp_->Socket())
@@ -364,6 +343,20 @@ namespace kickflip
 					FD_SET((*ite)->tcp_->Socket(), &writeset_);
 				}
 			}
+			
+			// http
+			for(HttpObjectList::iterator ite = httpObject_list_.begin(); httpObject_list_.end()!=ite; ite++)
+			{
+				if(INVALID_SOCKET != (*ite)->Socket())
+				{
+					if(HttpObject::MODE_INIT == (*ite)->mode_)
+						FD_SET((*ite)->Socket(), &writeset_);
+					if(HttpObject::MODE_SEND == (*ite)->mode_)
+						FD_SET((*ite)->Socket(), &readset_);
+				}
+			}
+
+
 			struct timeval to = {0,1};
 			int n = select(0, &readset_, &writeset_, &exset_, &to);
 
@@ -374,12 +367,11 @@ namespace kickflip
 					// accept
 /*
 					make_nonblocking(fd);
-					state[fd] = alloc_fd_state();
-					assert(state[fd]);
 */
 				}
 			}
 			// 送受信
+			// tcp
 			for(NetObjectList::iterator ite = netObject_list_.begin(); netObject_list_.end()!=ite; ite++)
 			{
 				TCPObject& tcp = *static_cast<TCPObject*>((*ite)->tcp_);
@@ -387,13 +379,34 @@ namespace kickflip
 				{
 					int r = 0;
 					if (FD_ISSET(tcp.Socket(), &readset_)) {
-						(*ite)->recvDataChankbuffer();
+						(*ite)->recvDatafromChankbuffer();
 					}
 					if (FD_ISSET(tcp.Socket(), &writeset_)) {
-						(*ite)->sendDataChankbuffer();
+						(*ite)->sendDatafromChankbuffer();
 					}
 
 				}
+			}
+			// http
+			for(HttpObjectList::iterator ite = httpObject_list_.begin(); httpObject_list_.end()!=ite; )
+			{
+				if(INVALID_SOCKET != (*ite)->Socket())
+				{
+					int r = 0;
+					if (FD_ISSET((*ite)->Socket(), &readset_)) {
+						(*ite)->recvDatafromBuffer();
+					}
+					if (FD_ISSET((*ite)->Socket(), &writeset_)) {
+						(*ite)->sendDatafromBuffer();
+					}
+				}
+				if(HttpObject::MODE_FINISH == (*ite)->mode_)
+				{
+					ite = httpObject_list_.erase(ite);
+				}else{
+					ite++;
+				}
+
 			}
 
 			return true;
@@ -408,7 +421,8 @@ namespace kickflip
 			if(NULL == netObject) return NULL;
 
 			// コネクトする
-			if(false == netObject->Connect(netObject_me_, _ipAddr, _port)) return NULL;
+			if(false == netObject->Open(_ipAddr, _port)) return NULL;
+			if(false == netObject->Connect(netObject_me_)) return NULL;
 			netObject_list_.push_back(netObject);
 			return netObject;
 		}
@@ -422,7 +436,8 @@ namespace kickflip
 			if(NULL == netObject) return NULL;
 
 			// コネクトする
-			if(false == netObject->Connect(netObject_me_, _ipAddr, _port)) return NULL;
+			if(false == netObject->Open(_ipAddr, _port)) return NULL;
+			if(false == netObject->Connect(netObject_me_)) return NULL;
 			netObject_list_.push_back(netObject);
 			return netObject;
 		}
@@ -443,9 +458,20 @@ namespace kickflip
 			}
 
 			// 通常送信
-			return  rpToClient->pushData( command,  sbuf,  flag);
+			return  rpToClient->pushDatatoChankbuffer( command,  sbuf,  flag);
 		}
 
+		unsigned long GetMyAddr()
+		{
+			// 自分のIPアドレスを得る
+			char name[256];
+			int re = gethostname(name, sizeof(name));
+			if( 0 != re ) return 0;
+
+			PHOSTENT hostinfo = gethostbyname(name);
+			if( NULL == hostinfo ) return 0;
+			return *(unsigned long*)((struct in_addr *)*hostinfo->h_addr_list);
+		}
 
 
 	};
