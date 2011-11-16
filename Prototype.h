@@ -8,6 +8,7 @@
 #include "kickflip/HashString.h"
 #include <cstdio>
 #include <vector>
+#include "kickflip/Network.h"
 
 class Prototype :
 	public kickflip::Framework
@@ -178,6 +179,8 @@ public:
 	LPDIRECT3DTEXTURE9       rayMap;
 
 	int m_iFlag;
+
+	kickflip::Network::HttpObjectWPtr httpObject_;
 
 };
 

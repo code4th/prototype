@@ -4,7 +4,6 @@
 #include "kickflip/Embedded.h"
 #include "kickflip/Debug/DebugFont.h"
 #include "kickflip/Thread.h"
-#include "kickflip/Network.h"
 
 
 
@@ -65,8 +64,9 @@ void Prototype::ExecOnceBeforeUpdate()
 {
 	Network::Get();
 
-	Network::HttpObjectRPtr httpObject = Network::Get()->GetHttpObject();
-	httpObject->Request("pma026.pmc.co.jp","GET /~olbaid_lobby/login.php?host HTTP/1.0\r\n\r\n", true);
+	httpObject_ = Network::Get()->GetHttpObject();
+	if(NULL != httpObject_)
+		httpObject_->Request("pma026.pmc.co.jp","GET /~olbaid_lobby/login.php?host HTTP/1.0\r\n\r\n", false);
 
 	/*
 		http://ec2-175-41-224-156.ap-northeast-1.compute.amazonaws.com:7000/
@@ -92,8 +92,6 @@ void Prototype::ExecOnceBeforeUpdate()
         obj.convert(&rvec);
 	}
 
-	while(!httpObject->Complete());
-	std::string result = httpObject->GetResult();
 
 //	Network::Get()->RegistClient("ec2-175-41-224-156.ap-northeast-1.compute.amazonaws.com",7000);
 	Network::Get()->RegistClient("ec2-175-41-224-156.ap-northeast-1.compute.amazonaws.com",7000);
@@ -285,11 +283,16 @@ void Prototype::UpdateFrame()
 	DebugPrint(0,3,"deltaMicroSecond:(realtime:%d)",Time::GetRealDeltaTimeMicroSecond());
 	DebugPrint(0,4,"fps:%f(ave:%.1f)\n",Time::GetFPS(),Time::GetFPSAve());
 
+	if(NULL != httpObject_ && httpObject_->Complete())
+	{
+		std::string result = httpObject_->GetResult();
+	}
+
 	{
 		static int cnt=0;
 		cnt++;
 		std::string message;
-		for(int i=0; i<100;i++)
+		for(int i=0; i<10;i++)
 		{
 			message+=cformat("%d(%d)",cnt,i);
 		}
@@ -300,6 +303,7 @@ void Prototype::UpdateFrame()
 		Network::Get()->SendData(NULL,"message",buf);
 	}
 
+	// ’ÊMXV
 	Network::Get()->Update();
 
 

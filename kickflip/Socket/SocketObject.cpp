@@ -176,7 +176,7 @@ namespace kickflip
 			while (true) 
 			{
 				if (*addrptr_ == NULL) {
-					NET_TRACE( "TCPObject can't connect All list: %s\n", WSAGetLastErrorMessage() );					
+					NET_TRACE( "TCPObject can't connect All list\n");					
 					Close();
 					return false;
 				}
@@ -186,6 +186,7 @@ namespace kickflip
 				{
 					break;
 				}
+				NET_TRACE( "TCPObject can't connect %s: %s\n", inet_ntoa( sockaddr_in_.sin_addr ), WSAGetLastErrorMessage() );
 
 				addrptr_++;
 			}
@@ -193,7 +194,7 @@ namespace kickflip
 			if( 0 != connect( socket_, (struct sockaddr *)&sockaddr_in_, sizeof( sockaddr_in_ ) )  )
 			{
 				if(WSAEISCONN != WSAGetLastError()){
-					NET_TRACE( "TCPObject can't connect : %s\n", WSAGetLastErrorMessage() );
+					NET_TRACE( "TCPObject can't connect %s: %s\n", inet_ntoa( sockaddr_in_.sin_addr ), WSAGetLastErrorMessage() );
 					Close();
 					return false;
 				}
@@ -202,7 +203,7 @@ namespace kickflip
 
 		SetBlock(_isBlock);
 		NonDelay();
-		NET_TRACE( "TCPObject Address connected : %s\n", inet_ntoa( sockaddr_in_.sin_addr ) );
+		NET_TRACE( "TCPObject Address connected %s\n", inet_ntoa( sockaddr_in_.sin_addr ) );
 
 		return true;
 	}
@@ -250,10 +251,13 @@ namespace kickflip
 		addrptr_ = NULL;
 		if( INVALID_SOCKET == socket_ ) return;
 
+		SetBlock(true);
 		char	DataBuf[1024];
 		//	受信停止後, 既に送信済みデータを取得し, ソケットを閉じる
 		shutdown( socket_, SD_SEND );		//	受信拒否
 		while( recv( socket_, DataBuf, sizeof( DataBuf ), 0 ) > 0 );
+		NET_TRACE( "TCPObject Close : %s\n", WSAGetLastErrorMessage() );
+		
 		SocketObject::Close();
 	}
 
@@ -324,6 +328,7 @@ nextState:
 
 	bool TCPObject::RecvData( msgpack::sbuffer& _buf, int _flags)
 	{
+		_buf.clear();
 		while( true )
 		{
 			char buf[1024];
@@ -333,7 +338,7 @@ nextState:
 			{
 			case 0:
 				// 受信終了
-				_buf.write(buf,rcvSize);
+				//_buf.write(buf,rcvSize);
 				return true;
 
 			case SOCKET_ERROR:
