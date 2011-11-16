@@ -131,33 +131,38 @@ namespace kickflip
 	/*TCP***************************************/
 	/////////////////////////////////////////////
 	// 接続
-	bool TCPObject::Open( unsigned long addr, unsigned short port )
+	bool TCPObject::Open( unsigned long _addr, unsigned short _port, SOCKET _socket)
 	{
 		Close();
-		socket_ = socket(AF_INET, SOCK_STREAM, 0);
+		if(NULL == _socket)
+		{
+			socket_ = socket(AF_INET, SOCK_STREAM, 0);
+		}else{
+			socket_ = _socket;
+		}
 		if( INVALID_SOCKET == socket_ ) return false;
 
 		//memcpy( sockaddr_in_, 0, sizeof( sockaddr_in_ ) );
 
 		sockaddr_in_.sin_family = AF_INET;
-		sockaddr_in_.sin_port = htons( port );
-		sockaddr_in_.sin_addr.S_un.S_addr = addr;
+		sockaddr_in_.sin_port = htons( _port );
+		sockaddr_in_.sin_addr.S_un.S_addr = _addr;
 
 		return true;
 	}
 
-	bool TCPObject::Open( const char* addr, unsigned short port )
+	bool TCPObject::Open( const char* _addr, unsigned short _port )
 	{
-		Open( static_cast< unsigned long>(0), port );
+		Open( static_cast< unsigned long>(0), _port );
 		// とりあえず、アドレスを変換してみる
-		sockaddr_in_.sin_addr.S_un.S_addr = inet_addr(addr);
+		sockaddr_in_.sin_addr.S_un.S_addr = inet_addr(_addr);
 
 		if (INADDR_NONE == sockaddr_in_.sin_addr.S_un.S_addr) {
 			// 変換出来なければ
-			struct hostent *host = gethostbyname(addr);
+			struct hostent *host = gethostbyname(_addr);
 			if ( NULL == host ) {
 				if (WSAGetLastError() == WSAHOST_NOT_FOUND) {
-					NET_TRACE( "TCPObject host not found : %s\n", addr );
+					NET_TRACE( "TCPObject host not found : %s\n", _addr );
 				}
 				Close();
 				return false;
@@ -229,19 +234,17 @@ namespace kickflip
 		return true;
 	}
 
-	SOCKET TCPObject::Accept()
+	SOCKET TCPObject::Accept(struct sockaddr_in& _in_addr, int& _in_addr_len)
 	{
-		struct sockaddr_in in_addr;
-		int in_addr_len = sizeof(in_addr);
 
-		SOCKET new_sock = accept( socket_, (struct sockaddr*)&in_addr, &in_addr_len );
+		SOCKET new_sock = accept( socket_, (struct sockaddr*)&_in_addr, &_in_addr_len );
 		if( new_sock == INVALID_SOCKET || 0 > new_sock )
 		{
 			NET_TRACE( "TCPObject accept error: %s\n", WSAGetLastErrorMessage());
 			return INVALID_SOCKET;
 		}
 
-		NET_TRACE( "TCPObject accept: %s(%d)\n", inet_ntoa(in_addr.sin_addr), ntohs(in_addr.sin_port) );
+		NET_TRACE( "TCPObject accept: %s(%d)\n", inet_ntoa(_in_addr.sin_addr), ntohs(_in_addr.sin_port) );
 
 		return new_sock;
 	}
@@ -261,13 +264,13 @@ namespace kickflip
 		SocketObject::Close();
 	}
 
-	int TCPObject::SendData( const char* pData, unsigned int dataSize)
+	int TCPObject::SendData( const char* _data, unsigned int _dataSize)
 	{
 		unsigned int totalSize = 0;
 
-		while( totalSize < dataSize )
+		while( totalSize < _dataSize )
 		{
-			int sendSize = send( socket_, (char*)(pData + totalSize), dataSize - totalSize, 0 );
+			int sendSize = send( socket_, (char*)(_data + totalSize), _dataSize - totalSize, 0 );
 
 			if( sendSize != SOCKET_ERROR )
 			{	//	送信OK
@@ -277,22 +280,23 @@ namespace kickflip
 			else
 			{	//	本気(まじ)エラー
 				//printf( "error : 0x%x\n", WSAGetLastError() );
-				NET_TRACE( "TCPObject SOCKET_ERROR : %s\n", WSAGetLastErrorMessage() );
+				NET_TRACE( "TCPObject send : %s\n", WSAGetLastErrorMessage() );
 				return -1;
 			}
 		}
 
 		return totalSize;
 	}
-	int TCPObject::RecvData( char* pData, unsigned int dataSize, int flags)
+/*
+	int TCPObject::RecvData( char* _data, unsigned int _dataSize, int _flags)
 	{
 		unsigned int totalSize = 0;
-		char *pDataBuf = (char *)malloc( dataSize );
-		memset( pDataBuf, 0, dataSize );
+		char data = (char *)malloc( _dataSize );
+		memset( data, 0, _dataSize );
 
 		while( totalSize < dataSize )
 		{
-			int rcvSize = recv( socket_, pDataBuf + totalSize, dataSize - totalSize, flags );
+			int rcvSize = recv( socket_, data + totalSize, _dataSize - totalSize, _flags );
 
 			switch(rcvSize)
 			{
@@ -308,7 +312,7 @@ namespace kickflip
 					}else{
 						// ノンブロックの弊害
 						NET_TRACE( "TCPObject recv error : %s\n", WSAGetLastErrorMessage() );
-						free( pDataBuf );
+						free( data );
 						return rcvSize;
 					}
 				}
@@ -320,12 +324,12 @@ namespace kickflip
 			}
 		}
 nextState:
-		memcpy( pData, pDataBuf, totalSize );
-		free( pDataBuf );
+		memcpy( _data, data, totalSize );
+		free( data );
 
 		return totalSize;
 	}
-
+*/
 	bool TCPObject::RecvData( msgpack::sbuffer& _buf, int _flags)
 	{
 		_buf.clear();
@@ -348,7 +352,7 @@ nextState:
 						// ノンブロックの弊害
 						return true;
 					}else{
-						NET_TRACE( "TCPObject recv error : %s\n", WSAGetLastErrorMessage() );
+						NET_TRACE( "TCPObject recv : %s\n", WSAGetLastErrorMessage() );
 						return false;
 					}
 				}

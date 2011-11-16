@@ -43,7 +43,6 @@ namespace kickflip
 		bool IsEnable(){ return INVALID_SOCKET!=socket_;}
 		bool SetBlock(bool _isBlock)
 		{
-
 			unsigned long val=1;
 			if(true == _isBlock) val = 0;
 			ioctlsocket( socket_, FIONBIO, &val );
@@ -85,16 +84,15 @@ namespace kickflip
 		virtual ~TCPObject() {Close();}
 
 	public:
-		bool Open( unsigned long addr, unsigned short port );
-		bool Open( const char* addr, unsigned short port );
+		bool Open( unsigned long _addr, unsigned short _port, SOCKET _socket = NULL );
+		bool Open( const char* _addr, unsigned short _port );
 		bool Bind();
 		bool Listen(int _max_connect = 5);
-		SOCKET Accept();
+		SOCKET Accept(struct sockaddr_in& _in_addr, int& _in_addr_len);
 
 		bool Connect(bool _isBlock = true);
 		virtual void Close();
-		int SendData( const char* pData, unsigned int dataSize);
-		int RecvData( char* pData, unsigned int dataSize, int flags);
+		int SendData( const char* _data, unsigned int _dataSize);
 		bool RecvData( msgpack::sbuffer& _buf, int _flags);
 	};
 
@@ -108,10 +106,10 @@ namespace kickflip
 		virtual ~UDPObject() {Close();}
 
 	public:
-		bool Open(unsigned short port);
+		bool Open(unsigned short _port);
 		virtual void Close();
-		int SendData( const char* pData, unsigned int dataSize, unsigned long toAddr=0, unsigned short toPort=0 );
-		int RecvData( char* pData, unsigned int dataSize, int flags, struct sockaddr_in* from=NULL, int* fromlen=NULL );
+		int SendData( const char* _data, unsigned int _dataSize, unsigned long _toAddr=0, unsigned short _toPort=0 );
+		int RecvData( char* _data, unsigned int _dataSize, int _flags, struct sockaddr_in* _from=NULL, int* _fromlen=NULL );
 	};
 
 

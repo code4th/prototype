@@ -103,6 +103,11 @@ namespace kickflip
 				unsigned int size = (*ite)->GetSendBufferSize();
 				tcp_->SendData(data, size);
 			}
+
+
+
+
+
 			sendChankReliableList_.clear();
 			return true;
 		}
@@ -128,10 +133,10 @@ namespace kickflip
 		bool IsLocal() {return isLocal_;}
 		const std::string& GetName(){ return name_;}
 
-		bool Open( unsigned long _ipAddr, unsigned short _port )
+		bool Open( unsigned long _ipAddr, unsigned short _port, SOCKET _socket = NULL )
 		{
 			tcp_ = new TCPObject();
-			if(false == tcp_->Open(_ipAddr,_port))
+			if(false == tcp_->Open(_ipAddr,_port, _socket))
 			{
 				tcp_ = NULL;
 				return false;
@@ -358,13 +363,13 @@ namespace kickflip
 			int n = select(0, &readset_, &writeset_, &exset_, &to);
 
 			if (FD_ISSET(listener_->Socket(), &readset_)) {
-				SOCKET new_sock = listener_->Accept();
+				struct sockaddr_in in_addr;
+				int in_addr_len = sizeof(in_addr);
+				SOCKET new_sock = listener_->Accept(in_addr, in_addr_len);
 				if (INVALID_SOCKET != new_sock) 
 				{
 					// accept
-/*
-					make_nonblocking(fd);
-*/
+					RegistClient(in_addr.sin_addr.s_addr, ntohs(in_addr.sin_port),new_sock);
 				}
 			}
 			// 送受信
@@ -410,7 +415,7 @@ namespace kickflip
 		}
 
 
-		NetObjectRPtr RegistClient(const unsigned long _ipAddr, const unsigned short _port)
+		NetObjectRPtr RegistClient(const unsigned long _ipAddr, const unsigned short _port, SOCKET _socket = NULL)
 		{
 			if(NULL == netObject_me_) return NULL;
 
@@ -418,8 +423,13 @@ namespace kickflip
 			if(NULL == netObject) return NULL;
 
 			// コネクトする
-			if(false == netObject->Open(_ipAddr, _port)) return NULL;
-			if(false == netObject->Connect(netObject_me_)) return NULL;
+			if(NULL == _socket)
+			{
+				if(false == netObject->Open(_ipAddr, _port)) return NULL;
+				if(false == netObject->Connect(netObject_me_)) return NULL;
+			}else{
+				if(false == netObject->Open(_ipAddr, _port, _socket)) return NULL;
+			}
 			netObject_list_.push_back(netObject);
 			return netObject;
 		}
