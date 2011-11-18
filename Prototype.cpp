@@ -60,8 +60,45 @@ static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, c
 	++i;
 */
 }
+
 void Prototype::ExecOnceBeforeUpdate()
 {
+
+	{
+
+		msgpack::sbuffer buffer;
+		msgpack::packer<msgpack::sbuffer> pk(&buffer);
+		pk.pack(std::string("origin"));
+		pk.pack(std::string("cmd:id"));
+		pk.pack(int(10));
+		pk.pack(std::string("cmd:position"));
+		pk.pack(float(10.2));
+		pk.pack(float(10.2));
+		pk.pack(float(10.2));
+		pk.pack(std::string("cmd:message"));
+		pk.pack(float(128));
+		pk.pack(float(256));
+		pk.pack(std::string("hallo"));
+		pk.pack(std::string("cmd:damage"));
+		pk.pack(float(10000));
+
+		// deserializes these objects using msgpack::unpacker.
+		msgpack::unpacker pac;
+
+		// feeds the buffer.
+		pac.reserve_buffer(buffer.size());
+		memcpy(pac.buffer(), buffer.data(), buffer.size());
+		pac.buffer_consumed(buffer.size());
+
+		// now starts streaming deserialization.
+		msgpack::unpacked result;
+		while(pac.next(&result)) {
+			msgpack::object& obj = result.get();
+			obj.convert();
+		}
+	}
+
+
 	Network::Get();
 
 	httpObject_ = Network::Get()->GetHttpObject();
@@ -94,7 +131,7 @@ void Prototype::ExecOnceBeforeUpdate()
 
 
 //	Network::Get()->RegistClient("ec2-175-41-224-156.ap-northeast-1.compute.amazonaws.com",7000);
-	Network::Get()->RegistClient("ec2-175-41-224-156.ap-northeast-1.compute.amazonaws.com",7000);
+	Network::Get()->RegistClient("ec2-175-41-211-129.ap-northeast-1.compute.amazonaws.com",7000);
 
 
 	m_rpResouceManager = new ResourceManager();
