@@ -45,6 +45,22 @@ namespace kickflip
 		std::string			name_;
 
 	private:
+		SmartPtr(RawFormat);
+		class RawFormat : public ReferenceObject
+		{
+		public:
+			enum TYPE{
+				TYPE_UNKNOWN  = 0,
+				TYPE_MSG_PACK = 1,
+			};
+			char header[8];
+			TYPE type;
+			msgpack::sbuffer sbuf;
+			RawFormat()
+				: type(TYPE_UNKNOWN)
+			{strcpy_s(header,sizeof(header),"msgpack");}
+		};
+
 		SmartPtr(ChankData);
 		class ChankData : public ReferenceObject
 		{
@@ -61,6 +77,7 @@ namespace kickflip
 			std::string command_;
 			msgpack::sbuffer sbuf_;
 		public:
+			const char* GetCommand() { return command_.c_str();}
 			const char* GetSendBuffer() { return sbuf_.data();}
 			unsigned int GetSendBufferSize() { return sbuf_.size();}
 		};
@@ -97,18 +114,36 @@ namespace kickflip
 
 		bool sendDatafromChankbuffer()
 		{
+			// ヘッダ
+			// コマンド
+			// データ
+			RawFormat raw_format;
+			msgpack::packer<msgpack::sbuffer> pk(&raw_format.sbuf);
+			raw_format.type = RawFormat::TYPE_MSG_PACK;
+//			raw_format.sbuf.clear();
+//			raw_format.sbuf.write("origin",6);
+			pk.pack_raw_body("origin",6);
+
+//			int id = 5;
+//			raw_format.sbuf.write((const char*)&id,sizeof(int));
+
+			// データチャンクフォーマット作成
 			for( ChankList::iterator ite = sendChankReliableList_.begin(); sendChankReliableList_.end() != ite; ite++ )
 			{
 				const char* data = (*ite)->GetSendBuffer();
 				unsigned int size = (*ite)->GetSendBufferSize();
-				tcp_->SendData(data, size);
+
+				pk.pack(std::string((*ite)->GetCommand()));
+				pk.pack_raw(size);
+				pk.pack_raw_body(data, size);
+
 			}
 
-
-
-
+			tcp_->SendData(raw_format.sbuf.data(), raw_format.sbuf.size());
 
 			sendChankReliableList_.clear();
+
+
 			return true;
 		}
 		bool recvDatafromChankbuffer()
@@ -121,6 +156,71 @@ namespace kickflip
 				return false;
 
 			}
+
+			return false;
+
+			const size_t header_size = 6;
+			char header[header_size];
+			memcpy(header,rbuf.data(),header_size);
+
+			// デシリアライズテスト
+			{
+				enum DATA_TYPE {
+					DATA_TYPE_HEADER,
+					DATA_TYPE_COMMAND,
+					DATA_TYPE_PARAMS,
+				};
+				// deserializes these objects using msgpack::unpacker.
+				msgpack::unpacker pac;
+
+				// feeds the buffer.
+				size_t msgpack_size = rbuf.size()-header_size;
+				char* msgpack_data = rbuf.data()+header_size;
+				pac.reserve_buffer(msgpack_size);
+				memcpy(pac.buffer(), msgpack_data, msgpack_size);
+				pac.buffer_consumed(msgpack_size);
+
+				// now starts streaming deserialization.
+				DATA_TYPE data_type = DATA_TYPE_HEADER;
+				msgpack::unpacked result;
+				while(pac.next(&result)) {
+					msgpack::object& obj = result.get();
+					switch(data_type)
+					{
+					case DATA_TYPE_HEADER:
+						{
+							// ヘッダ
+							std::string header;
+							obj.convert(&header);
+							if("origin" == header)
+							{
+								// originデータ
+							}
+							data_type = DATA_TYPE_COMMAND;
+						}
+						break;
+					case DATA_TYPE_COMMAND:
+						{
+							std::string command;
+							obj.convert(&command);
+							data_type = DATA_TYPE_PARAMS;
+						}
+						break;
+					case DATA_TYPE_PARAMS:
+						{
+							std::string param;
+							obj.convert(&param);
+//							msgpack::sbuffer rbuf;
+//							rbuf.write(obj.via.raw.ptr,obj.via.raw.size);
+							data_type = DATA_TYPE_COMMAND;
+						}
+						break;
+
+					}
+				}
+			}
+
+
 			std::string res(rbuf.data(),rbuf.size());
 			NET_TRACE("recvDataChankbuffer:%s",res.c_str());
 			ChankDataRPtr chank = new ChankData("dummy",rbuf);
