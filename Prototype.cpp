@@ -4,6 +4,7 @@
 #include "kickflip/Embedded.h"
 #include "kickflip/Debug/DebugFont.h"
 #include "kickflip/Thread.h"
+#include "kickflip/Geometry.h"
 #include "nucl/Random.h"
 
 
@@ -18,6 +19,12 @@ void Prototype::InitSetting()
 	nc::Random rnd;
 	rnd.setSeed(100);
 	int uZ= rnd.rand();
+
+	Geometry::Line l;
+	l.p;
+	l.v;
+
+
 }
 static void WINAPI makeRayMap(D3DXVECTOR4* pOut, const D3DXVECTOR2* pTexCoord, const D3DXVECTOR2* pTexelSize, void* data)
 {
