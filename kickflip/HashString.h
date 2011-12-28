@@ -137,7 +137,7 @@ namespace kickflip
 			// ƒL[‚ªŠù‚É‚ ‚é‚Ì‚É“ü—Í‚³‚ê‚½•¶š—ñ‚ªˆá‚¤
 			if(pib.first->second != str)
 			{
-				assert(0);
+				//assert(0);
 			}
 		}
 

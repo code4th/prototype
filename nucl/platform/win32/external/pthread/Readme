@@ -1,0 +1,9 @@
+
+Pre-Build.2の中のlib/staticは南野がビルドした物です。
+
+pthread.2のmakeファイルからビルドしました。
+VCコマンドラインから以下を実行した結果です。
+
+nmake clean VC-static
+nmake clean VC-static-debug
+
